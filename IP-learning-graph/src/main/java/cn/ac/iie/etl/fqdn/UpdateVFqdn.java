@@ -1,4 +1,4 @@
-package cn.ac.iie.etl;
+package cn.ac.iie.etl.fqdn;
 
 import cn.ac.iie.config.ApplicationConfig;
 import cn.ac.iie.dao.BaseArangoData;
@@ -8,8 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Set;
 
 public class UpdateVFqdn implements Runnable{
     private static final Logger LOG = LoggerFactory.getLogger(UpdateVFqdn.class);

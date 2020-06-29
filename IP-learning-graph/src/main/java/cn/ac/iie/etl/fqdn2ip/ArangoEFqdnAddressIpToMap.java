@@ -1,4 +1,4 @@
-package cn.ac.iie.etl;
+package cn.ac.iie.etl.fqdn2ip;
 
 import cn.ac.iie.dao.BaseArangoData;
 import cn.ac.iie.utils.ArangoDBConnect;
@@ -17,8 +17,6 @@ public class ArangoEFqdnAddressIpToMap implements Runnable{
     private long diffTime;
     private int threadNumber;
 
-    private ArangoEFqdnAddressIpToMap(){}
-
     public ArangoEFqdnAddressIpToMap(ArangoDBConnect arangoDBConnect, long finalMinTime, long diffTime, int threadNumber) {
         this.arangoDBConnect = arangoDBConnect;
         this.finalMinTime = finalMinTime;
@@ -31,7 +29,7 @@ public class ArangoEFqdnAddressIpToMap implements Runnable{
         long maxThreadTime = finalMinTime + (threadNumber + 1) * diffTime;
         long minThreadTime = finalMinTime + threadNumber * diffTime;
         String query = "FOR doc IN R_LOCATE_FQDN2IP filter doc.FIRST_FOUND_TIME >= " + minThreadTime + " and doc.FIRST_FOUND_TIME <= " + maxThreadTime + " RETURN doc";
-        LOG.info(name + ":" + query);
+//        LOG.info(name + ":" + query);
         long s = System.currentTimeMillis();
         try {
             ArangoCursor<BaseEdgeDocument> docs = arangoDBConnect.executorQuery(query, BaseEdgeDocument.class);
@@ -43,9 +41,8 @@ public class ArangoEFqdnAddressIpToMap implements Runnable{
                     BaseArangoData.e_Fqdn_Address_Ip_Map.put(key, doc);
                     i++;
                 }
-                LOG.info(name + ":共处理数据" + i);
                 long l = System.currentTimeMillis();
-                LOG.info(name + "运行时间：" + (l - s));
+                LOG.info(query+ "\n处理R_LOCATE_FQDN2IP数据" + i + "条，运行时间：" + (l - s));
             }else {
                 LOG.warn("查询R_LOCATE_FQDN2IP异常,结果为空");
             }

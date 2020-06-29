@@ -42,7 +42,7 @@ public class ArangoDBConnect {
         return conn;
     }
 
-    public ArangoDatabase getDatabase(){
+    private ArangoDatabase getDatabase(){
         return arangoDB.db(ApplicationConfig.ARANGODB_DB_NAME);
     }
 
@@ -59,7 +59,8 @@ public class ArangoDBConnect {
     public <T> ArangoCursor<T> executorQuery(String query,Class<T> type){
         ArangoDatabase database = getDatabase();
         Map<String, Object> bindVars = new MapBuilder().get();
-        AqlQueryOptions options = new AqlQueryOptions().ttl(ApplicationConfig.ARANGODB_TTL);
+        AqlQueryOptions options = new AqlQueryOptions()
+                .ttl(ApplicationConfig.ARANGODB_TTL);
         try {
             return database.query(query, bindVars, options, type);
         }catch (Exception e){
@@ -70,6 +71,7 @@ public class ArangoDBConnect {
         }
     }
 
+    @Deprecated
     public <T> void insertAndUpdate(ArrayList<T> docInsert,ArrayList<T> docUpdate,String collectionName){
         ArangoDatabase database = getDatabase();
         try {
@@ -97,17 +99,16 @@ public class ArangoDBConnect {
             if (!docOverwrite.isEmpty()){
                 DocumentCreateOptions documentCreateOptions = new DocumentCreateOptions();
                 documentCreateOptions.overwrite(true);
-                documentCreateOptions.returnNew(true);
-                documentCreateOptions.returnOld(true);
+                documentCreateOptions.silent(true);
                 MultiDocumentEntity<DocumentCreateEntity<T>> documentCreateEntityMultiDocumentEntity = collection.insertDocuments(docOverwrite, documentCreateOptions);
                 Collection<ErrorEntity> errors = documentCreateEntityMultiDocumentEntity.getErrors();
                 for (ErrorEntity errorEntity:errors){
                     LOG.error("写入arangoDB异常："+errorEntity.getErrorMessage());
                 }
-
             }
         }catch (Exception e){
-            LOG.error(e.toString());
+            LOG.error("更新失败："+e.toString());
+//            clean();
         }finally {
             docOverwrite.clear();
         }

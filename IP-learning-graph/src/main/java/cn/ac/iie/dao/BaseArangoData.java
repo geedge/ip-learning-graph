@@ -1,10 +1,10 @@
 package cn.ac.iie.dao;
 
 import cn.ac.iie.config.ApplicationConfig;
-import cn.ac.iie.etl.ArangoEFqdnAddressIpToMap;
-import cn.ac.iie.etl.ArangoEIpVisitFqdnToMap;
-import cn.ac.iie.etl.ArangoVFqdnToMap;
-import cn.ac.iie.etl.ArangoVIpToMap;
+import cn.ac.iie.etl.fqdn2ip.ArangoEFqdnAddressIpToMap;
+import cn.ac.iie.etl.ip2fqdn.ArangoEIpVisitFqdnToMap;
+import cn.ac.iie.etl.fqdn.ArangoVFqdnToMap;
+import cn.ac.iie.etl.ip.ArangoVIpToMap;
 import cn.ac.iie.utils.ArangoDBConnect;
 import cn.ac.iie.utils.ExecutorThreadPool;
 import com.arangodb.ArangoCursor;
@@ -68,7 +68,7 @@ public class BaseArangoData {
         long maxTime = 0L;
         long diffTime = 0L;
         long startTime = System.currentTimeMillis();
-        LOG.info(sql);
+//        LOG.info(sql);
         ArangoCursor<BaseDocument> timeDoc = arangoDBConnect.executorQuery(sql, BaseDocument.class);
         try {
             if (timeDoc != null){
@@ -78,7 +78,7 @@ public class BaseArangoData {
                     minTime = Long.parseLong(doc.getAttribute("min_time").toString());
                 }
                 long lastTime = System.currentTimeMillis();
-                LOG.info("查询最大最小时间用时：" + (lastTime - startTime));
+                LOG.info(sql+"\n查询最大最小时间用时：" + (lastTime - startTime));
                 diffTime = (maxTime - minTime) / ApplicationConfig.THREAD_POOL_NUMBER;
             }else {
                 LOG.warn("获取ArangoDb时间范围为空");

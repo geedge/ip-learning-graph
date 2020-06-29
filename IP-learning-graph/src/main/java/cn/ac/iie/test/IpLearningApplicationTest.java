@@ -58,7 +58,6 @@ public class IpLearningApplicationTest {
                 LOG.error("主线程阻塞异常：\n"+e.toString());
             }
 
-            //        BaseClickhouseData.BaseEFqdnAddressIp();
             long lastC = System.currentTimeMillis();
             LOG.info("更新ArangoDb时间："+(lastC - startC));
         }catch (Exception e){

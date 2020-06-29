@@ -1,4 +1,4 @@
-package cn.ac.iie.etl;
+package cn.ac.iie.etl.fqdn2ip;
 
 import cn.ac.iie.config.ApplicationConfig;
 import cn.ac.iie.dao.BaseArangoData;
@@ -7,18 +7,15 @@ import com.arangodb.entity.BaseEdgeDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Set;
+import java.util.*;
 
-public class UpdateEIpVisitFqdn implements Runnable {
-    private static final Logger LOG = LoggerFactory.getLogger(UpdateEIpVisitFqdn.class);
+public class UpdateEFqdnAddressIp implements Runnable {
+    private static final Logger LOG = LoggerFactory.getLogger(UpdateEFqdnAddressIp.class);
     private HashMap<String, BaseEdgeDocument> documentHashMap;
 
     private static final ArangoDBConnect arangoManger = ArangoDBConnect.getInstance();
 
-    public UpdateEIpVisitFqdn(HashMap<String, BaseEdgeDocument> documentHashMap) {
+    public UpdateEFqdnAddressIp(HashMap<String, BaseEdgeDocument> documentHashMap) {
         this.documentHashMap = documentHashMap;
     }
 
@@ -30,12 +27,10 @@ public class UpdateEIpVisitFqdn implements Runnable {
         int i = 0;
         try {
             for (String key : keySet) {
-
-
                 BaseEdgeDocument newEdgeDocument = documentHashMap.getOrDefault(key, null);
                 if (newEdgeDocument != null) {
                     i += 1;
-                    BaseEdgeDocument edgeDocument = BaseArangoData.e_Ip_Visit_Fqdn_Map.getOrDefault(key, null);
+                    BaseEdgeDocument edgeDocument = BaseArangoData.e_Fqdn_Address_Ip_Map.getOrDefault(key, null);
 
                     Object lastFoundTime = newEdgeDocument.getAttribute("LAST_FOUND_TIME");
                     long tlsCountTotal = Long.parseLong(newEdgeDocument.getAttribute("TLS_CNT_TOTAL").toString());
@@ -65,6 +60,26 @@ public class UpdateEIpVisitFqdn implements Runnable {
                         httpCntRecentsDst[0] = httpCountTotal;
                         edgeDocument.addAttribute("HTTP_CNT_RECENT", httpCntRecentsDst);
 
+                        ArrayList<String> distCipTotal = (ArrayList<String>) edgeDocument.getAttribute("DIST_CIP_TOTAL");
+                        String[] distCipTotalsSrc = distCipTotal.toArray(new String[distCipTotal.size()]);
+//                        String[] distCipTotalsSrc = (String[]) edgeDocument.getAttribute("DIST_CIP_TOTAL");
+
+//                        ArrayList<String> distCipRecent = (ArrayList<String>) newEdgeDocument.getAttribute("DIST_CIP_RECENT");
+//                        String[] distCipRecentsSrc = distCipRecent.toArray(new String[distCipRecent.size()]);
+                        String[] distCipRecentsSrc = (String[]) newEdgeDocument.getAttribute("DIST_CIP_RECENT");
+
+                        if (distCipTotalsSrc.length == 30) {
+                            HashSet<String> dIpSet = new HashSet<>();
+                            dIpSet.addAll(Arrays.asList(distCipRecentsSrc));
+                            dIpSet.addAll(Arrays.asList(distCipTotalsSrc));
+                            Object[] distCipTotals = dIpSet.toArray();
+                            if (distCipTotals.length > 30) {
+                                System.arraycopy(distCipTotals, 0, distCipTotals, 0, 30);
+                            }
+                            edgeDocument.addAttribute("DIST_CIP_TOTAL", distCipTotals);
+                        }
+                        edgeDocument.addAttribute("DIST_CIP_RECENT", distCipRecentsSrc);
+
 //                        docUpdate.add(edgeDocument);
                         docInsert.add(edgeDocument);
                     } else {
@@ -79,17 +94,17 @@ public class UpdateEIpVisitFqdn implements Runnable {
                         docInsert.add(newEdgeDocument);
                     }
                     if (i >= ApplicationConfig.UPDATE_ARANGO_BATCH) {
-//                        arangoManger.insertAndUpdate(docInsert, docUpdate, "R_VISIT_IP2FQDN");
-                        arangoManger.overwrite(docInsert,"R_VISIT_IP2FQDN");
-                        LOG.info("更新R_VISIT_IP2FQDN:" + i);
+//                        arangoManger.insertAndUpdate(docInsert, docUpdate, "R_LOCATE_FQDN2IP");
+                        arangoManger.overwrite(docInsert,"R_LOCATE_FQDN2IP");
+                        LOG.info("更新R_LOCATE_FQDN2IP:" + i);
                         i = 0;
                     }
                 }
             }
             if (i != 0) {
-//                arangoManger.insertAndUpdate(docInsert, docUpdate, "R_VISIT_IP2FQDN");
-                arangoManger.overwrite(docInsert,"R_VISIT_IP2FQDN");
-                LOG.info("更新R_VISIT_IP2FQDN:" + i);
+//                arangoManger.insertAndUpdate(docInsert, docUpdate, "R_LOCATE_FQDN2IP");
+                arangoManger.overwrite(docInsert,"R_LOCATE_FQDN2IP");
+                LOG.info("更新R_LOCATE_FQDN2IP:" + i);
             }
         } catch (Exception e) {
             LOG.error(e.getMessage());

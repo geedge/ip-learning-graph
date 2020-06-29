@@ -1,17 +1,12 @@
 package cn.ac.iie;
 
-import cn.ac.iie.config.ApplicationConfig;
-import cn.ac.iie.etl.UpdateEFqdnAddressIp;
+import cn.ac.iie.dao.BaseArangoData;
 import cn.ac.iie.utils.ArangoDBConnect;
-import cn.ac.iie.utils.ClickhouseConnect;
-import com.alibaba.druid.pool.DruidPooledConnection;
-import com.arangodb.ArangoCollection;
-import com.arangodb.ArangoDatabase;
+import cn.ac.iie.utils.ExecutorThreadPool;
 import com.arangodb.entity.*;
 
-import java.sql.ResultSet;
-import java.sql.Statement;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class TestMap {
 
@@ -52,6 +47,7 @@ public class TestMap {
         */
 
 
+
         String[] distCipRecents = new  String[]{"2.3"};
         ArrayList<BaseDocument> baseEdgeDocuments = new ArrayList<>();
 
@@ -74,6 +70,39 @@ public class TestMap {
         instance.overwrite(baseEdgeDocuments,"FQDN");
 
         ArangoDBConnect.clean();
+
+
+
+        /*
+
+        BaseArangoData.BaseEFqdnAddressIpDataMap();
+
+        ExecutorThreadPool.shutdown();
+        ExecutorThreadPool.awaitThreadTask();
+
+        try {
+            ConcurrentHashMap.KeySetView<String, BaseEdgeDocument> keySet = BaseArangoData.e_Fqdn_Address_Ip_Map.keySet();
+            ArrayList<BaseEdgeDocument> baseEdgeDocuments = new ArrayList<>();
+            ArangoDBConnect instance = ArangoDBConnect.getInstance();
+            for (String key:keySet){
+                BaseEdgeDocument baseEdgeDocument = BaseArangoData.e_Fqdn_Address_Ip_Map.get(key);
+//                Long[] tls_cnt_recents = (Long[]) baseEdgeDocument.getAttribute("TLS_CNT_RECENT");
+                ArrayList<Long> tlsCntRecent = (ArrayList<Long>) baseEdgeDocument.getAttribute("TLS_CNT_RECENT");
+                Long[] tlsCntRecentsSrc = tlsCntRecent.toArray(new Long[tlsCntRecent.size()]);
+                System.out.println(Arrays.toString(tlsCntRecentsSrc));
+                tlsCntRecent.set(tlsCntRecent.size()-2,99L);
+
+                baseEdgeDocument.addAttribute("TLS_CNT_RECENT",tlsCntRecent);
+                baseEdgeDocuments.add(baseEdgeDocument);
+            }
+            instance.overwrite(baseEdgeDocuments,"R_LOCATE_FQDN2IP");
+        }catch (Exception e){
+            e.printStackTrace();
+        }finally {
+            ArangoDBConnect.clean();
+        }
+
+*/
 
 
 
