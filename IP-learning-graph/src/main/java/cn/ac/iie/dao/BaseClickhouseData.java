@@ -1,10 +1,10 @@
 package cn.ac.iie.dao;
 
 import cn.ac.iie.config.ApplicationConfig;
-import cn.ac.iie.etl.UpdateEFqdnAddressIp;
-import cn.ac.iie.etl.UpdateEIpVisitFqdn;
-import cn.ac.iie.etl.UpdateVFqdn;
-import cn.ac.iie.etl.UpdateVIP;
+import cn.ac.iie.etl.fqdn2ip.UpdateEFqdnAddressIp;
+import cn.ac.iie.etl.ip2fqdn.UpdateEIpVisitFqdn;
+import cn.ac.iie.etl.fqdn.UpdateVFqdn;
+import cn.ac.iie.etl.ip.UpdateVIP;
 import cn.ac.iie.utils.ClickhouseConnect;
 import com.alibaba.druid.pool.DruidPooledConnection;
 import com.arangodb.entity.BaseDocument;
@@ -29,10 +29,10 @@ public class BaseClickhouseData {
     private static HashMap<Integer, HashMap<String, BaseEdgeDocument>> eIpVisitFqdnMap = new HashMap<>();
 
     private static long[] getTimeLimit() {
-        long maxTime = System.currentTimeMillis() / 1000;
-        long minTime = maxTime - 3600;
-//        long maxTime = ApplicationConfig.READ_CLICKHOUSE_MAX_TIME;
-//        long minTime = ApplicationConfig.READ_CLICKHOUSE_MIN_TIME;
+//        long maxTime = System.currentTimeMillis() / 1000;
+//        long minTime = maxTime - 3600;
+        long maxTime = ApplicationConfig.READ_CLICKHOUSE_MAX_TIME;
+        long minTime = ApplicationConfig.READ_CLICKHOUSE_MIN_TIME;
         return new long[]{maxTime, minTime};
     }
 
@@ -64,7 +64,7 @@ public class BaseClickhouseData {
         long minTime = timeLimit[1];
         String where = "common_recv_time >= " + minTime + " AND common_recv_time <= " + maxTime + " AND (common_schema_type = 'HTTP' or common_schema_type = 'SSL')";
         String sql = "SELECT common_schema_type,http_host,ssl_sni,MAX(common_recv_time) as LAST_FOUND_TIME,MIN(common_recv_time) as FIRST_FOUND_TIME FROM tsg_galaxy_v3.connection_record_log WHERE " + where + " GROUP BY common_schema_type,http_host,ssl_sni ";
-        LOG.info(sql);
+//        LOG.info(sql);
         long start = System.currentTimeMillis();
         try {
             DruidPooledConnection connection = manger.getConnection();
@@ -89,7 +89,7 @@ public class BaseClickhouseData {
                 }
             }
             long last = System.currentTimeMillis();
-            LOG.info("读取clickhouse v_FQDN时间：" + (last - start));
+            LOG.info(sql+"\n读取clickhouse v_FQDN时间：" + (last - start));
             for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
                 ArrayList<BaseDocument> baseDocumentList = vFqdnMap.get(i);
                 LOG.info("vFqdn baseDocumentHashMap大小："+baseDocumentList.size());
@@ -107,7 +107,7 @@ public class BaseClickhouseData {
         long minTime = timeLimit[1];
         String where = " common_recv_time >= " + minTime + " AND common_recv_time <= " + maxTime+ " AND (common_schema_type = 'HTTP' or common_schema_type = 'SSL')";
         String sql = "SELECT IP,location,MIN(common_recv_time) AS FIRST_FOUND_TIME,MAX(common_recv_time) AS LAST_FOUND_TIME,COUNT(*) AS IP_COUNT_TOTAL FROM(( SELECT common_client_ip AS IP, common_client_location AS location, common_recv_time FROM tsg_galaxy_v3.connection_record_log where "+where+" ) UNION ALL ( SELECT common_server_ip AS IP, common_server_location AS location, common_recv_time FROM tsg_galaxy_v3.connection_record_log where "+where+" )) GROUP BY IP,location";
-        LOG.info(sql);
+//        LOG.info(sql);
         long start = System.currentTimeMillis();
         try {
             DruidPooledConnection connection = manger.getConnection();
@@ -140,7 +140,7 @@ public class BaseClickhouseData {
                 documentList.add(newDoc);
             }
             long last = System.currentTimeMillis();
-            LOG.info("读取clickhouse v_IP时间：" + (last - start));
+            LOG.info(sql+"\n读取clickhouse v_IP时间：" + (last - start));
             for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
                 ArrayList<BaseDocument> baseDocumentList = vIpMap.get(i);
                 LOG.info("vIp baseDocumentHashMap大小："+baseDocumentList.size());
@@ -158,7 +158,7 @@ public class BaseClickhouseData {
         long minTime = timeLimit[1];
         String where = " common_recv_time >= " + minTime + " AND common_recv_time <= " + maxTime+ " AND (common_schema_type = 'HTTP' or common_schema_type = 'SSL')";
         String sql = "SELECT common_schema_type,http_host,ssl_sni,common_server_ip,MAX(common_recv_time) as LAST_FOUND_TIME,MIN(common_recv_time) as FIRST_FOUND_TIME,COUNT(*) as COUNT_TOTAL,groupArray(30)(common_client_ip) as DIST_CIP_RECENT FROM tsg_galaxy_v3.connection_record_log WHERE "+where+" GROUP BY common_schema_type,http_host,ssl_sni,common_server_ip";
-        LOG.info(sql);
+//        LOG.info(sql);
         long start = System.currentTimeMillis();
         try {
             DruidPooledConnection connection = manger.getConnection();
@@ -203,7 +203,7 @@ public class BaseClickhouseData {
 //            ArangoDBConnect.getInstance().insertAndUpdate(baseEdgeDocuments,null,"R_LOCATE_FQDN2IP");
             schemaHashMap.clear();
             long last = System.currentTimeMillis();
-            LOG.info("读取clickhouse EFqdnAddressIp时间：" + (last - start));
+            LOG.info(sql+"\n读取clickhouse EFqdnAddressIp时间：" + (last - start));
             for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
                 HashMap<String, BaseEdgeDocument> baseDocumentHashMap = eFqdnAddressIpMap.get(i);
                 LOG.info("EFqdnAddressIp baseDocumentHashMap大小："+baseDocumentHashMap.size());
@@ -221,7 +221,7 @@ public class BaseClickhouseData {
         long minTime = timeLimit[1];
         String where = " common_recv_time >= " + minTime + " AND common_recv_time <= " + maxTime+ " AND (common_schema_type = 'HTTP' or common_schema_type = 'SSL')";
         String sql = "SELECT common_schema_type,http_host,ssl_sni,common_client_ip,MAX(common_recv_time) as LAST_FOUND_TIME,MIN(common_recv_time) as FIRST_FOUND_TIME,count(*) as COUNT_TOTAL FROM tsg_galaxy_v3.connection_record_log WHERE "+where+" GROUP BY common_schema_type,http_host,ssl_sni,common_client_ip";
-        LOG.info(sql);
+//        LOG.info(sql);
         long start = System.currentTimeMillis();
         try {
             DruidPooledConnection connection = manger.getConnection();
@@ -256,7 +256,7 @@ public class BaseClickhouseData {
             }
             schemaHashMap.clear();
             long last = System.currentTimeMillis();
-            LOG.info("读取clickhouse EIpVisitFqdn时间：" + (last - start));
+            LOG.info(sql+"\n读取clickhouse EIpVisitFqdn时间：" + (last - start));
             for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
                 HashMap<String, BaseEdgeDocument> baseDocumentHashMap = eIpVisitFqdnMap.get(i);
                 LOG.info("EIpVisitFqdn baseDocumentHashMap大小："+baseDocumentHashMap.size());
@@ -300,7 +300,7 @@ public class BaseClickhouseData {
             for (String f:fqdnArr){
                 if (pattern.matcher(f).matches()){
                     int i = Integer.parseInt(f);
-                    if (i > 255){
+                    if (i < 0 || i > 255){
                         return true;
                     }
                 }else {
