@@ -44,11 +44,8 @@ public class TestMap {
         for (long c:longs1){
             System.out.println(c);
         }
-        */
 
 
-
-        String[] distCipRecents = new  String[]{"2.3"};
         ArrayList<BaseDocument> baseEdgeDocuments = new ArrayList<>();
 
         BaseDocument newDoc = new BaseDocument();
@@ -66,11 +63,13 @@ public class TestMap {
         baseEdgeDocuments.add(document);
 
         ArangoDBConnect instance = ArangoDBConnect.getInstance();
-
         instance.overwrite(baseEdgeDocuments,"FQDN");
 
         ArangoDBConnect.clean();
+*/
 
+        BaseEdgeDocument baseEdgeDocument = new BaseEdgeDocument();
+        System.out.println(baseEdgeDocument.getProperties().getOrDefault("1",155));
 
 
         /*
