@@ -66,22 +66,20 @@ public class BaseClickhouseData {
             DruidPooledConnection connection = manger.getConnection();
             Statement statement = connection.createStatement();
             ResultSet resultSet = statement.executeQuery(sql);
-//            HashSet<String> fqdnSet = new HashSet<>();
             while (resultSet.next()) {
-//                String commonSchemaType = resultSet.getString("common_schema_type");
-//                String fqdnName = commonSchemaGetFqdn(commonSchemaType,resultSet);
                 String fqdnName = resultSet.getString("FQDN");
-//                fqdnSet.add(fqdnName);
-                long firstFoundTime = resultSet.getLong("FIRST_FOUND_TIME");
-                long lastFoundTime = resultSet.getLong("LAST_FOUND_TIME");
-                BaseDocument newDoc = new BaseDocument();
-                newDoc.setKey(fqdnName);
-                newDoc.addAttribute("FQDN_NAME", fqdnName);
-                newDoc.addAttribute("FIRST_FOUND_TIME", firstFoundTime);
-                newDoc.addAttribute("LAST_FOUND_TIME", lastFoundTime);
-                int i = Math.abs(fqdnName.hashCode()) % ApplicationConfig.THREAD_POOL_NUMBER;
-                ArrayList<BaseDocument> documentList = vFqdnMap.getOrDefault(i, new ArrayList<>());
-                documentList.add(newDoc);
+                if (isDomain(fqdnName)){
+                    long firstFoundTime = resultSet.getLong("FIRST_FOUND_TIME");
+                    long lastFoundTime = resultSet.getLong("LAST_FOUND_TIME");
+                    BaseDocument newDoc = new BaseDocument();
+                    newDoc.setKey(fqdnName);
+                    newDoc.addAttribute("FQDN_NAME", fqdnName);
+                    newDoc.addAttribute("FIRST_FOUND_TIME", firstFoundTime);
+                    newDoc.addAttribute("LAST_FOUND_TIME", lastFoundTime);
+                    int i = Math.abs(fqdnName.hashCode()) % ApplicationConfig.THREAD_POOL_NUMBER;
+                    ArrayList<BaseDocument> documentList = vFqdnMap.getOrDefault(i, new ArrayList<>());
+                    documentList.add(newDoc);
+                }
             }
             long last = System.currentTimeMillis();
             LOG.info(sql + "\n读取clickhouse v_FQDN时间：" + (last - start));
@@ -154,29 +152,31 @@ public class BaseClickhouseData {
             while (resultSet.next()) {
                 String commonSchemaType = resultSet.getString("common_schema_type");
                 String vFqdn = resultSet.getString("FQDN");
-                String vIp = resultSet.getString("common_server_ip");
-                long firstFoundTime = resultSet.getLong("FIRST_FOUND_TIME");
-                long lastFoundTime = resultSet.getLong("LAST_FOUND_TIME");
-                long countTotal = resultSet.getLong("COUNT_TOTAL");
-                String[] distCipRecents = (String[]) resultSet.getArray("DIST_CIP_RECENT").getArray();
+                if (isDomain(vFqdn)){
+                    String vIp = resultSet.getString("common_server_ip");
+                    long firstFoundTime = resultSet.getLong("FIRST_FOUND_TIME");
+                    long lastFoundTime = resultSet.getLong("LAST_FOUND_TIME");
+                    long countTotal = resultSet.getLong("COUNT_TOTAL");
+                    String[] distCipRecents = (String[]) resultSet.getArray("DIST_CIP_RECENT").getArray();
 
-                String key = vFqdn + "-" + vIp;
-                BaseEdgeDocument newDoc = new BaseEdgeDocument();
-                newDoc.setKey(key);
-                newDoc.setFrom("FQDN/" + vFqdn);
-                newDoc.setTo("IP/" + vIp);
-                newDoc.addAttribute("FIRST_FOUND_TIME", firstFoundTime);
-                newDoc.addAttribute("LAST_FOUND_TIME", lastFoundTime);
-                newDoc.addAttribute("COUNT_TOTAL", countTotal);
-                newDoc.addAttribute("DIST_CIP_RECENT", distCipRecents);
-                newDoc.addAttribute("DIST_CIP_TOTAL", distCipRecents);
+                    String key = vFqdn + "-" + vIp;
+                    BaseEdgeDocument newDoc = new BaseEdgeDocument();
+                    newDoc.setKey(key);
+                    newDoc.setFrom("FQDN/" + vFqdn);
+                    newDoc.setTo("IP/" + vIp);
+                    newDoc.addAttribute("FIRST_FOUND_TIME", firstFoundTime);
+                    newDoc.addAttribute("LAST_FOUND_TIME", lastFoundTime);
+                    newDoc.addAttribute("COUNT_TOTAL", countTotal);
+                    newDoc.addAttribute("DIST_CIP_RECENT", distCipRecents);
+                    newDoc.addAttribute("DIST_CIP_TOTAL", distCipRecents);
 
-                int hashMod = Math.abs(key.hashCode()) % ApplicationConfig.THREAD_POOL_NUMBER;
-                HashMap<String, HashMap<String, BaseEdgeDocument>> documentHashMap = eFqdnAddressIpMap.getOrDefault(hashMod, new HashMap());
+                    int hashMod = Math.abs(key.hashCode()) % ApplicationConfig.THREAD_POOL_NUMBER;
+                    HashMap<String, HashMap<String, BaseEdgeDocument>> documentHashMap = eFqdnAddressIpMap.getOrDefault(hashMod, new HashMap());
 
-                HashMap<String, BaseEdgeDocument> schemaHashMap = documentHashMap.getOrDefault(key, new HashMap<>());
-                schemaHashMap.put(commonSchemaType, newDoc);
-                documentHashMap.put(key, schemaHashMap);
+                    HashMap<String, BaseEdgeDocument> schemaHashMap = documentHashMap.getOrDefault(key, new HashMap<>());
+                    schemaHashMap.put(commonSchemaType, newDoc);
+                    documentHashMap.put(key, schemaHashMap);
+                }
             }
             long last = System.currentTimeMillis();
             LOG.info(sql + "\n读取clickhouse EFqdnAddressIp时间：" + (last - start));
@@ -203,24 +203,26 @@ public class BaseClickhouseData {
                 String commonSchemaType = resultSet.getString("common_schema_type");
                 String vIp = resultSet.getString("common_client_ip");
                 String vFqdn = resultSet.getString("FQDN");
-                String key = vIp + "-" + vFqdn;
-                long firstFoundTime = resultSet.getLong("FIRST_FOUND_TIME");
-                long lastFoundTime = resultSet.getLong("LAST_FOUND_TIME");
-                long countTotal = resultSet.getLong("COUNT_TOTAL");
+                if (isDomain(vFqdn)){
+                    String key = vIp + "-" + vFqdn;
+                    long firstFoundTime = resultSet.getLong("FIRST_FOUND_TIME");
+                    long lastFoundTime = resultSet.getLong("LAST_FOUND_TIME");
+                    long countTotal = resultSet.getLong("COUNT_TOTAL");
 
-                BaseEdgeDocument newDoc = new BaseEdgeDocument();
-                newDoc.setKey(key);
-                newDoc.setFrom("IP/" + vIp);
-                newDoc.setTo("FQDN/" + vFqdn);
-                newDoc.addAttribute("FIRST_FOUND_TIME", firstFoundTime);
-                newDoc.addAttribute("LAST_FOUND_TIME", lastFoundTime);
-                newDoc.addAttribute("COUNT_TOTAL", countTotal);
-                int i = Math.abs(key.hashCode()) % ApplicationConfig.THREAD_POOL_NUMBER;
-                HashMap<String, HashMap<String, BaseEdgeDocument>> documentHashMap = eIpVisitFqdnMap.getOrDefault(i, new HashMap());
+                    BaseEdgeDocument newDoc = new BaseEdgeDocument();
+                    newDoc.setKey(key);
+                    newDoc.setFrom("IP/" + vIp);
+                    newDoc.setTo("FQDN/" + vFqdn);
+                    newDoc.addAttribute("FIRST_FOUND_TIME", firstFoundTime);
+                    newDoc.addAttribute("LAST_FOUND_TIME", lastFoundTime);
+                    newDoc.addAttribute("COUNT_TOTAL", countTotal);
+                    int i = Math.abs(key.hashCode()) % ApplicationConfig.THREAD_POOL_NUMBER;
+                    HashMap<String, HashMap<String, BaseEdgeDocument>> documentHashMap = eIpVisitFqdnMap.getOrDefault(i, new HashMap());
 
-                HashMap<String, BaseEdgeDocument> schemaHashMap = documentHashMap.getOrDefault(key, new HashMap<>());
-                schemaHashMap.put(commonSchemaType, newDoc);
-                documentHashMap.put(key, schemaHashMap);
+                    HashMap<String, BaseEdgeDocument> schemaHashMap = documentHashMap.getOrDefault(key, new HashMap<>());
+                    schemaHashMap.put(commonSchemaType, newDoc);
+                    documentHashMap.put(key, schemaHashMap);
+                }
             }
             long last = System.currentTimeMillis();
             LOG.info(sql + "\n读取clickhouse EIpVisitFqdn时间：" + (last - start));
@@ -235,6 +237,7 @@ public class BaseClickhouseData {
         }
     }
 
+    @Deprecated
     private static String commonSchemaGetFqdn(String commonSchemaType, ResultSet resultSet) {
         String vFqdn = "";
         try {

@@ -10,37 +10,45 @@ public class BaseUpdateEtl {
 
         BaseEdgeDocument newBaseEdgeDocument = new BaseEdgeDocument();
         Set<String> schemaSets = newEdgeDocumentSchemaMap.keySet();
+        Map<String, Object> properties = newBaseEdgeDocument.getProperties();
+
         for (String schema : schemaSets) {
             BaseEdgeDocument schemaEdgeDoc = newEdgeDocumentSchemaMap.get(schema);
-            setSchemaCnt(schema,schemaEdgeDoc,newBaseEdgeDocument);
-            if (newBaseEdgeDocument.getKey() != null){
-                Map<String, Object> properties = newBaseEdgeDocument.getProperties();
+            if (!properties.isEmpty()){
                 setFoundTime(properties,schemaEdgeDoc);
                 setDistinctClientIpBySchema(properties,schemaEdgeDoc);
             }else {
-                Map<String, Object> properties = schemaEdgeDoc.getProperties();
-                properties.remove("COUNT_TOTAL");
                 newBaseEdgeDocument = schemaEdgeDoc;
+                properties = schemaEdgeDoc.getProperties();
             }
+            setSchemaCnt(schema,schemaEdgeDoc,properties);
         }
+        properties.remove("COUNT_TOTAL");
+        addSchemaProperty(properties);
+
+        newBaseEdgeDocument.setProperties(properties);
         return newBaseEdgeDocument;
     }
 
     public static BaseEdgeDocument mergeIp2FqdnBySchema(HashMap<String, BaseEdgeDocument> newEdgeDocumentMap){
         BaseEdgeDocument newBaseEdgeDocument = new BaseEdgeDocument();
         Set<String> schemaSets = newEdgeDocumentMap.keySet();
+        Map<String, Object> properties = newBaseEdgeDocument.getProperties();
+
         for (String schema : schemaSets) {
             BaseEdgeDocument schemaEdgeDoc = newEdgeDocumentMap.get(schema);
-            setSchemaCnt(schema,schemaEdgeDoc,newBaseEdgeDocument);
-            if (newBaseEdgeDocument.getKey() != null){
-                Map<String, Object> properties = newBaseEdgeDocument.getProperties();
+            if (!properties.isEmpty()){
                 setFoundTime(properties,schemaEdgeDoc);
             }else {
-                Map<String, Object> properties = schemaEdgeDoc.getProperties();
-                properties.remove("COUNT_TOTAL");
                 newBaseEdgeDocument = schemaEdgeDoc;
+                properties = schemaEdgeDoc.getProperties();
             }
+            setSchemaCnt(schema,schemaEdgeDoc,properties);
         }
+        properties.remove("COUNT_TOTAL");
+        addSchemaProperty(properties);
+
+        newBaseEdgeDocument.setProperties(properties);
         return newBaseEdgeDocument;
     }
 
@@ -53,11 +61,21 @@ public class BaseUpdateEtl {
         setDistinctClientIpByHistory(newEdgeDocument,edgeDocument);
     }
 
+    private static void addSchemaProperty(Map<String, Object> properties){
+        if (!properties.containsKey("TLS_CNT_TOTAL")){
+            properties.put("TLS_CNT_TOTAL",0L);
+            properties.put("TLS_CNT_RECENT",new long[7]);
+        }else if (!properties.containsKey("HTTP_CNT_TOTAL")){
+            properties.put("HTTP_CNT_TOTAL",0L);
+            properties.put("HTTP_CNT_RECENT",new long[7]);
+        }
+    }
+
     private static void setDistinctClientIpByHistory(BaseEdgeDocument newEdgeDocument,BaseEdgeDocument edgeDocument){
         ArrayList<String> distCipTotal = (ArrayList<String>) edgeDocument.getAttribute("DIST_CIP_TOTAL");
         String[] distCipTotalsSrc = distCipTotal.toArray(new String[distCipTotal.size()]);
 
-        String[] distCipRecentsSrc = (String[]) newEdgeDocument.getAttribute("DIST_CIP_RECENT");
+        Object[] distCipRecentsSrc = (Object[])newEdgeDocument.getAttribute("DIST_CIP_RECENT");
         if (distCipTotalsSrc.length == 30) {
             Object[] distCipTotals = mergeClientIp(distCipTotalsSrc, distCipRecentsSrc);
             edgeDocument.addAttribute("DIST_CIP_TOTAL", distCipTotals);
@@ -88,8 +106,8 @@ public class BaseUpdateEtl {
         edgeDocument.addAttribute(totalSchema, countTotal + updateCountTotal);
     }
 
-    private static Object[] mergeClientIp(String[] distCipTotalsSrc,String[] distCipRecentsSrc){
-        HashSet<String> dIpSet = new HashSet<>();
+    private static Object[] mergeClientIp(Object[] distCipTotalsSrc,Object[] distCipRecentsSrc){
+        HashSet<Object> dIpSet = new HashSet<>();
         dIpSet.addAll(Arrays.asList(distCipRecentsSrc));
         dIpSet.addAll(Arrays.asList(distCipTotalsSrc));
         Object[] distCipTotals = dIpSet.toArray();
@@ -103,7 +121,7 @@ public class BaseUpdateEtl {
         String[] schemaDistCipRecents = (String[]) schemaEdgeDoc.getAttribute("DIST_CIP_RECENT");
         String[] distCipRecents = (String[]) properties.get("DIST_CIP_RECENT");
         Object[] mergeClientIp = mergeClientIp(schemaDistCipRecents, distCipRecents);
-        properties.put("DIST_CIP_RECENT",mergeClientIp);
+        properties.put("DIST_CIP_RECENT", mergeClientIp);
         properties.put("DIST_CIP_TOTAL",mergeClientIp);
     }
 
@@ -116,21 +134,21 @@ public class BaseUpdateEtl {
         properties.put("LAST_FOUND_TIME",schemaLastFoundTime>lastFoundTime?schemaLastFoundTime:lastFoundTime);
     }
 
-    private static void setSchemaCnt(String schema,BaseEdgeDocument schemaEdgeDoc,BaseEdgeDocument newBaseEdgeDocument){
+    private static void setSchemaCnt(String schema,BaseEdgeDocument schemaEdgeDoc,Map<String, Object> properties){
         switch (schema) {
             case "HTTP":
                 long httpCntTotal = Long.parseLong(schemaEdgeDoc.getAttribute("COUNT_TOTAL").toString());
-                newBaseEdgeDocument.addAttribute("HTTP_CNT_TOTAL", httpCntTotal);
+                properties.put("HTTP_CNT_TOTAL", httpCntTotal);
                 long[] httpCntRecentsDst = new long[7];
                 httpCntRecentsDst[0] = httpCntTotal;
-                newBaseEdgeDocument.addAttribute("HTTP_CNT_RECENT", httpCntRecentsDst);
+                properties.put("HTTP_CNT_RECENT", httpCntRecentsDst);
                 break;
             case "SSL":
                 long tlsCntTotal = Long.parseLong(schemaEdgeDoc.getAttribute("COUNT_TOTAL").toString());
-                newBaseEdgeDocument.addAttribute("TLS_CNT_TOTAL", tlsCntTotal);
+                properties.put("TLS_CNT_TOTAL", tlsCntTotal);
                 long[] tlsCntRecentsDst = new long[7];
                 tlsCntRecentsDst[0] = tlsCntTotal;
-                newBaseEdgeDocument.addAttribute("TLS_CNT_RECENT", tlsCntRecentsDst);
+                properties.put("TLS_CNT_RECENT", tlsCntRecentsDst);
                 break;
         }
     }

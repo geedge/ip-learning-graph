@@ -54,7 +54,7 @@ public class UpdateEIpVisitFqdn implements Runnable {
                 LOG.info("更新R_VISIT_IP2FQDN:" + i);
             }
         } catch (Exception e) {
-            LOG.error(e.getMessage());
+            LOG.error(e.toString());
         }
     }
 }

@@ -50,7 +50,8 @@ public class UpdateEFqdnAddressIp implements Runnable {
                 LOG.info("更新R_LOCATE_FQDN2IP:" + i);
             }
         } catch (Exception e) {
-            LOG.error(e.getMessage());
+            e.printStackTrace();
+            LOG.error(e.toString());
         }
     }
 }
