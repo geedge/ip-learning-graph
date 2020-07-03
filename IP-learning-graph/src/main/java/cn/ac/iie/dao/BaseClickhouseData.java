@@ -28,6 +28,8 @@ public class BaseClickhouseData {
     private static HashMap<Integer, HashMap<String, HashMap<String, BaseEdgeDocument>>> eFqdnAddressIpMap = new HashMap<>();
     private static HashMap<Integer, HashMap<String, HashMap<String, BaseEdgeDocument>>> eIpVisitFqdnMap = new HashMap<>();
 
+    private static Pattern pattern = Pattern.compile("^[\\d]*$");
+
     private static long[] getTimeLimit() {
         long maxTime = System.currentTimeMillis() / 1000;
         long minTime = maxTime - 3600;
@@ -237,36 +239,13 @@ public class BaseClickhouseData {
         }
     }
 
-    @Deprecated
-    private static String commonSchemaGetFqdn(String commonSchemaType, ResultSet resultSet) {
-        String vFqdn = "";
-        try {
-            switch (commonSchemaType) {
-                case "HTTP":
-                    vFqdn = resultSet.getString("http_host");
-                    break;
-                case "SSL":
-                    vFqdn = resultSet.getString("ssl_sni");
-                    break;
-                default:
-                    LOG.warn("不支持该类型common_schema_type：" + commonSchemaType);
-            }
-        } catch (Exception e) {
-            LOG.error(e.getMessage());
-        }
-        if (isDomain(vFqdn)) {
-            return vFqdn;
-        }
-        return "";
-    }
-
     private static boolean isDomain(String fqdn) {
         try {
             String[] fqdnArr = fqdn.split("\\.");
             if (fqdnArr.length < 4 || fqdnArr.length > 4) {
                 return true;
             }
-            Pattern pattern = Pattern.compile("^[\\d]*$");
+
             for (String f : fqdnArr) {
                 if (pattern.matcher(f).matches()) {
                     int i = Integer.parseInt(f);
@@ -321,6 +300,29 @@ public class BaseClickhouseData {
         String httpSql = "SELECT http_host AS FQDN,common_client_ip,MAX(common_recv_time) AS LAST_FOUND_TIME,MIN(common_recv_time) AS FIRST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL,'HTTP' AS common_schema_type FROM tsg_galaxy_v3.connection_record_log WHERE " + where + " and common_schema_type = 'HTTP' GROUP BY http_host,common_client_ip";
         String sslSql = "SELECT ssl_sni AS FQDN,common_client_ip,MAX(common_recv_time) AS LAST_FOUND_TIME,MIN(common_recv_time) AS FIRST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL,'SSL' AS common_schema_type FROM tsg_galaxy_v3.connection_record_log WHERE common_schema_type = 'SSL' GROUP BY ssl_sni,common_client_ip";
         return "SELECT * FROM ((" + sslSql + ") UNION ALL (" + httpSql + "))WHERE FQDN != ''";
+    }
+
+    @Deprecated
+    private static String commonSchemaGetFqdn(String commonSchemaType, ResultSet resultSet) {
+        String vFqdn = "";
+        try {
+            switch (commonSchemaType) {
+                case "HTTP":
+                    vFqdn = resultSet.getString("http_host");
+                    break;
+                case "SSL":
+                    vFqdn = resultSet.getString("ssl_sni");
+                    break;
+                default:
+                    LOG.warn("不支持该类型common_schema_type：" + commonSchemaType);
+            }
+        } catch (Exception e) {
+            LOG.error(e.getMessage());
+        }
+        if (isDomain(vFqdn)) {
+            return vFqdn;
+        }
+        return "";
     }
 
 }
