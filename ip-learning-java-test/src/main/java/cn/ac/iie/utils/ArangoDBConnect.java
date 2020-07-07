@@ -5,10 +5,15 @@ import com.arangodb.ArangoCollection;
 import com.arangodb.ArangoCursor;
 import com.arangodb.ArangoDB;
 import com.arangodb.ArangoDatabase;
+import com.arangodb.entity.DocumentCreateEntity;
+import com.arangodb.entity.ErrorEntity;
+import com.arangodb.entity.MultiDocumentEntity;
 import com.arangodb.model.AqlQueryOptions;
+import com.arangodb.model.DocumentCreateOptions;
 import com.arangodb.util.MapBuilder;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Map;
 
 public class ArangoDBConnect {
@@ -62,6 +67,7 @@ public class ArangoDBConnect {
         }
     }
 
+    @Deprecated
     public <T> void insertAndUpdate(ArrayList<T> docInsert,ArrayList<T> docUpdate,String collectionName){
         ArangoDatabase database = getDatabase();
         try {
@@ -80,5 +86,28 @@ public class ArangoDBConnect {
             docInsert.clear();
         }
     }
+
+    public <T> void overwrite(ArrayList<T> docOverwrite,String collectionName){
+        ArangoDatabase database = getDatabase();
+        try {
+            ArangoCollection collection = database.collection(collectionName);
+            if (!docOverwrite.isEmpty()){
+                DocumentCreateOptions documentCreateOptions = new DocumentCreateOptions();
+                documentCreateOptions.overwrite(true);
+                documentCreateOptions.silent(true);
+                MultiDocumentEntity<DocumentCreateEntity<T>> documentCreateEntityMultiDocumentEntity = collection.insertDocuments(docOverwrite, documentCreateOptions);
+                Collection<ErrorEntity> errors = documentCreateEntityMultiDocumentEntity.getErrors();
+                for (ErrorEntity errorEntity:errors){
+                    System.out.println("写入arangoDB异常："+errorEntity.getErrorMessage());
+                }
+            }
+        }catch (Exception e){
+            System.out.println("更新失败："+e.toString());
+        }finally {
+            docOverwrite.clear();
+        }
+    }
+
+
 
 }

@@ -13,7 +13,7 @@ import java.util.Set;
 public class UpdateEFqdnAddressIp implements Runnable {
     private HashMap<String, BaseEdgeDocument> documentHashMap;
 
-    private static final ArangoDBConnect arangoManger = ArangoDBConnect.getInstance();
+    private static ArangoDBConnect arangoManger = ArangoDBConnect.getInstance();
 
     public UpdateEFqdnAddressIp(HashMap<String, BaseEdgeDocument> documentHashMap) {
         this.documentHashMap = documentHashMap;

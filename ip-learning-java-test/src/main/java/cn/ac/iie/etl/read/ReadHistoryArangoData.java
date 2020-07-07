@@ -1,49 +1,44 @@
-package cn.ac.iie.etl;
+package cn.ac.iie.etl.read;
 
-import cn.ac.iie.dao.BaseArangoData;
 import cn.ac.iie.utils.ArangoDBConnect;
 import com.arangodb.ArangoCursor;
 import com.arangodb.entity.BaseEdgeDocument;
 
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class ArangoEIpVisitFqdnToMap implements Runnable {
+/**
+ * @author wlh
+ * 多线程全量读取arangoDb历史数据，封装到map
+ */
+public class ReadHistoryArangoData extends Thread {
     private ArangoDBConnect arangoDBConnect;
-    private long finalMinTime;
-    private long diffTime;
-    private int threadNumber;
+    private String query;
+    private ConcurrentHashMap<String, BaseEdgeDocument> map;
 
-    private ArangoEIpVisitFqdnToMap(){}
-
-    public ArangoEIpVisitFqdnToMap(ArangoDBConnect arangoDBConnect, long finalMinTime, long diffTime, int threadNumber) {
+    public ReadHistoryArangoData(ArangoDBConnect arangoDBConnect, String query, ConcurrentHashMap<String, BaseEdgeDocument> map) {
         this.arangoDBConnect = arangoDBConnect;
-        this.finalMinTime = finalMinTime;
-        this.diffTime = diffTime;
-        this.threadNumber = threadNumber;
+        this.query = query;
+        this.map = map;
     }
 
+    @Override
     public void run() {
         String name = Thread.currentThread().getName();
-        long maxThreadTime = finalMinTime + (threadNumber + 1) * diffTime;
-        long minThreadTime = finalMinTime + threadNumber * diffTime;
-        String query = "FOR doc IN E_VISIT_V_IP_TO_V_FQDN filter doc.FIRST_FOUND_TIME >= " + minThreadTime + " and doc.FIRST_FOUND_TIME <= " + maxThreadTime + " RETURN doc";
         System.out.println(name + ":" + query);
         long s = System.currentTimeMillis();
         ArangoCursor<BaseEdgeDocument> docs = arangoDBConnect.executorQuery(query, BaseEdgeDocument.class);
-
         if (docs != null){
             List<BaseEdgeDocument> baseDocuments = docs.asListRemaining();
             int i = 0;
             for (BaseEdgeDocument doc : baseDocuments) {
                 String key = doc.getKey();
-                BaseArangoData.e_Ip_Visit_Fqdn_Map.put(key, doc);
+                map.put(key, doc);
                 i++;
             }
             System.out.println(name + ":共处理数据" + i);
             long l = System.currentTimeMillis();
             System.out.println(name + "运行时间：" + (l - s));
-        }else {
-            System.out.println("查询异常");
         }
     }
 }

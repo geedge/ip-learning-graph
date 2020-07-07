@@ -11,21 +11,15 @@ public class IpLearningApplicationTest {
 
     public static void main(String[] args) {
         long startA = System.currentTimeMillis();
-//        BaseArangoData.BaseVFqdnDataMap();
-//        BaseArangoData.BaseVIpDataMap();
-//        BaseArangoData.BaseEFqdnAddressIpDataMap();
-//        BaseArangoData.BaseEIpVisitFqdnDataMap();
+        BaseArangoData baseArangoData = new BaseArangoData();
+        baseArangoData.baseDocumentDataMap();
 
 
-//        ExecutorThreadPool.shutdown();
-//        ExecutorThreadPool.awaitThreadTask();
         long lastA = System.currentTimeMillis();
         System.out.println("读取ArangoDb时间："+(lastA - startA));
 
-//        UpdateGraphsData.updateVFqdn();
-//        UpdateGraphsData.updateVIp();
-//        UpdateGraphsData.updateEFqdnAddressIp();
-//        UpdateGraphsData.updateEIpVisitFqdn();
+
+        /*
 
         long startC = System.currentTimeMillis();
         CountDownLatch countDownLatch = new CountDownLatch(4);
@@ -67,6 +61,8 @@ public class IpLearningApplicationTest {
         }
         long lastC = System.currentTimeMillis();
         System.out.println("更新ArangoDb时间："+(lastC - startC));
+
+        */
 
         System.out.println(BaseArangoData.v_Fqdn_Map.size());
         System.out.println(BaseArangoData.v_Ip_Map.size());

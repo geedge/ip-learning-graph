@@ -29,7 +29,7 @@ public class ExecutorThreadPool {
         pool.execute(command);
     }
 
-    public static void awaitThreadTask(){
+    public void awaitThreadTask(){
         try {
             while (!pool.awaitTermination(ApplicationConfig.THREAD_AWAIT_TERMINATION_TIME, TimeUnit.SECONDS)) {
                 System.out.println("线程池没有关闭");
@@ -39,7 +39,7 @@ public class ExecutorThreadPool {
         }
     }
 
-    public static void shutdown(){
+    public void shutdown(){
         pool.shutdown();
     }
 
