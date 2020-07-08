@@ -1,0 +1,35 @@
+package cn.ac.iie.etl.vertex;
+
+import cn.ac.iie.etl.update.Vertex;
+import cn.ac.iie.utils.ArangoDBConnect;
+import com.arangodb.entity.BaseDocument;
+import com.arangodb.entity.BaseEdgeDocument;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+
+public class Ip extends Vertex {
+
+    public Ip(HashMap<String, ArrayList<BaseDocument>> newDocumentHashMap,
+              ArangoDBConnect arangoManger,
+              String collectionName,
+              ConcurrentHashMap<String, BaseEdgeDocument> historyDocumentMap,
+              CountDownLatch countDownLatch) {
+        super(newDocumentHashMap, arangoManger, collectionName, historyDocumentMap,countDownLatch);
+    }
+
+    @Override
+    protected void mergeFunction(Map<String, Object> properties, BaseDocument doc) {
+        super.mergeFunction(properties, doc);
+
+    }
+
+    @Override
+    protected void updateFunction(BaseDocument newDocument, BaseDocument historyDocument) {
+        super.updateFunction(newDocument, historyDocument);
+
+    }
+}

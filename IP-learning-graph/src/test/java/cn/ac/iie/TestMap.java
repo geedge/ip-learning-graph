@@ -106,4 +106,25 @@ public class TestMap {
 
 
     }
+
+    public boolean isValid(String s) {
+        HashMap<Character, Character> map = new HashMap<>();
+        map.put('(',')');
+        map.put('[',']');
+        map.put('{','}');
+
+        Stack<Character> stack = new Stack<Character>();
+        for (int i = 0;i < s.length();i++){
+            Character c = s.charAt(i);
+            if (map.containsKey(c)){
+                Character c1 = stack.isEmpty() ? '#' : stack.pop();
+                if (map.get(c) != c1){
+                    return false;
+                }
+            }else {
+                stack.push(c);
+            }
+        }
+        return stack.isEmpty();
+    }
 }
