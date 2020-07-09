@@ -1,4 +1,4 @@
-package cn.ac.iie.etl.update;
+package cn.ac.iie.service.update;
 
 import cn.ac.iie.config.ApplicationConfig;
 import cn.ac.iie.utils.ArangoDBConnect;
@@ -60,7 +60,7 @@ public class Relationship extends Thread {
         }
     }
 
-    private BaseEdgeDocument mergeRelationship(HashMap<String, BaseEdgeDocument> newEdgeDocumentSchemaMap) {
+    protected BaseEdgeDocument mergeRelationship(HashMap<String, BaseEdgeDocument> newEdgeDocumentSchemaMap) {
         BaseEdgeDocument newBaseEdgeDocument = new BaseEdgeDocument();
         Set<String> schemaSets = newEdgeDocumentSchemaMap.keySet();
         Map<String, Object> properties = newBaseEdgeDocument.getProperties();
@@ -83,7 +83,7 @@ public class Relationship extends Thread {
     }
 
     private void updateRelationship(BaseEdgeDocument newEdgeDocument,BaseEdgeDocument historyEdgeDocument,ArrayList<BaseEdgeDocument> docInsert){
-        if (historyEdgeDocument != null) {
+        if (historyEdgeDocument != null && newEdgeDocument != null) {
             updateFunction(newEdgeDocument, historyEdgeDocument);
             docInsert.add(historyEdgeDocument);
         } else {
@@ -183,7 +183,7 @@ public class Relationship extends Thread {
         }
     }
 
-    protected void checkSchemaProperty(Map<String, Object> properties){
+    private void checkSchemaProperty(Map<String, Object> properties){
         if (!properties.containsKey("TLS_CNT_TOTAL")){
             properties.put("TLS_CNT_TOTAL",0L);
             properties.put("TLS_CNT_RECENT",new long[7]);

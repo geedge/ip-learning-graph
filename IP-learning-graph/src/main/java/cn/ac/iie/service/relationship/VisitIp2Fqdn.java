@@ -1,6 +1,6 @@
-package cn.ac.iie.etl.relationship;
+package cn.ac.iie.service.relationship;
 
-import cn.ac.iie.etl.update.Relationship;
+import cn.ac.iie.service.update.Relationship;
 import cn.ac.iie.utils.ArangoDBConnect;
 import com.arangodb.entity.BaseEdgeDocument;
 

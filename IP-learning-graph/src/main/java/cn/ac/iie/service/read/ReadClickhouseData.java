@@ -1,4 +1,4 @@
-package cn.ac.iie.etl.read;
+package cn.ac.iie.service.read;
 
 import cn.ac.iie.config.ApplicationConfig;
 import com.arangodb.entity.BaseDocument;
@@ -56,6 +56,37 @@ public class ReadClickhouseData {
         return newDoc;
     }
 
+    public static BaseDocument getVertexSubscriberDocument(ResultSet resultSet) throws SQLException {
+        String subscriberId = resultSet.getString("common_subscriber_id");
+        long lastFoundTime = resultSet.getLong("LAST_FOUND_TIME");
+        long firstFoundTime = resultSet.getLong("FIRST_FOUND_TIME");
+        BaseDocument newDoc = new BaseDocument();
+        newDoc.setKey(subscriberId);
+        newDoc.addAttribute("FIRST_FOUND_TIME", firstFoundTime);
+        newDoc.addAttribute("LAST_FOUND_TIME", lastFoundTime);
+        return newDoc;
+    }
+
+    public static BaseEdgeDocument getRelationshipSubsciberLocateIpDocument(ResultSet resultSet) throws SQLException {
+        String subscriberId = resultSet.getString("common_subscriber_id");
+        String framedIp = resultSet.getString("radius_framed_ip");
+        long firstFoundTime = resultSet.getLong("FIRST_FOUND_TIME");
+        long lastFoundTime = resultSet.getLong("LAST_FOUND_TIME");
+        long countTotal = resultSet.getLong("COUNT_TOTAL");
+
+        String key = subscriberId + "-" + framedIp;
+        BaseEdgeDocument newDoc = new BaseEdgeDocument();
+        newDoc.setKey(key);
+        newDoc.setFrom("SUBSCRIBER/" + subscriberId);
+        newDoc.setTo("IP/" + framedIp);
+        newDoc.addAttribute("FIRST_FOUND_TIME", firstFoundTime);
+        newDoc.addAttribute("LAST_FOUND_TIME", lastFoundTime);
+        newDoc.addAttribute("COUNT_TOTAL", countTotal);
+
+        return newDoc;
+
+    }
+
     public static BaseEdgeDocument getRelationFqdnAddressIpDocument(ResultSet resultSet) throws SQLException {
         String vFqdn = resultSet.getString("FQDN");
         BaseEdgeDocument newDoc = null;
@@ -102,15 +133,14 @@ public class ReadClickhouseData {
         return newDoc;
     }
 
-    public static void putMapByHashcode(ResultSet resultSet, BaseEdgeDocument newDoc, HashMap<Integer, HashMap<String, HashMap<String, BaseEdgeDocument>>> map) throws SQLException {
+    public static void putMapByHashcode(ResultSet resultSet, BaseEdgeDocument newDoc, HashMap<Integer, HashMap<String, HashMap<String, BaseEdgeDocument>>> map,String schema) throws SQLException {
         if (newDoc != null){
             String key = newDoc.getKey();
-            String commonSchemaType = resultSet.getString("common_schema_type");
             int i = Math.abs(key.hashCode()) % ApplicationConfig.THREAD_POOL_NUMBER;
             HashMap<String, HashMap<String, BaseEdgeDocument>> documentHashMap = map.getOrDefault(i, new HashMap());
 
             HashMap<String, BaseEdgeDocument> schemaHashMap = documentHashMap.getOrDefault(key, new HashMap<>());
-            schemaHashMap.put(commonSchemaType, newDoc);
+            schemaHashMap.put(schema, newDoc);
             documentHashMap.put(key, schemaHashMap);
         }
     }
@@ -178,11 +208,27 @@ public class ReadClickhouseData {
         return "SELECT * FROM ((" + sslSql + ") UNION ALL (" + httpSql + "))WHERE FQDN != ''";
     }
 
+    public static String getVertexSubscriberSql(){
+        long[] timeLimit = getTimeLimit();
+        long maxTime = timeLimit[0];
+        long minTime = timeLimit[1];
+        String where = " common_recv_time >= "+minTime+" AND common_recv_time <= "+maxTime+" AND common_subscriber_id != '' AND radius_packet_type = 4 AND radius_acct_status_type = 1";
+        return "SELECT common_subscriber_id,MAX(common_recv_time) as LAST_FOUND_TIME,MIN(common_recv_time) as FIRST_FOUND_TIME FROM radius_record_log WHERE"+where+" GROUP BY common_subscriber_id";
+    }
+
+    public static String getRelationshipSubsciberLocateIpSql(){
+        long[] timeLimit = getTimeLimit();
+        long maxTime = timeLimit[0];
+        long minTime = timeLimit[1];
+        String where = " common_recv_time >= "+minTime+" AND common_recv_time <= "+maxTime+" AND common_subscriber_id != '' AND radius_framed_ip != '' AND radius_packet_type = 4 AND radius_acct_status_type = 1";
+        return "SELECT common_subscriber_id,radius_framed_ip,MAX(common_recv_time) as LAST_FOUND_TIME,MIN(common_recv_time) as FIRST_FOUND_TIME,COUNT(*) as COUNT_TOTAL FROM radius_record_log WHERE"+where+" GROUP BY common_subscriber_id,radius_framed_ip";
+    }
+
     private static long[] getTimeLimit() {
-//        long maxTime = System.currentTimeMillis() / 1000;
-//        long minTime = maxTime - 3600;
-        long maxTime = ApplicationConfig.READ_CLICKHOUSE_MAX_TIME;
-        long minTime = ApplicationConfig.READ_CLICKHOUSE_MIN_TIME;
+        long maxTime = System.currentTimeMillis() / 1000;
+        long minTime = maxTime - 3600;
+//        long maxTime = ApplicationConfig.READ_CLICKHOUSE_MAX_TIME;
+//        long minTime = ApplicationConfig.READ_CLICKHOUSE_MIN_TIME;
         return new long[]{maxTime, minTime};
     }
 

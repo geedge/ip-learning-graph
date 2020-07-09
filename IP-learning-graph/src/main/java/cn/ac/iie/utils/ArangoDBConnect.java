@@ -46,7 +46,7 @@ public class ArangoDBConnect {
         return arangoDB.db(ApplicationConfig.ARANGODB_DB_NAME);
     }
 
-    public static void clean(){
+    public void clean(){
         try {
             if (arangoDB != null){
                 arangoDB.shutdown();

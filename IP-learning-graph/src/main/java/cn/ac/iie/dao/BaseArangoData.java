@@ -1,7 +1,7 @@
 package cn.ac.iie.dao;
 
 import cn.ac.iie.config.ApplicationConfig;
-import cn.ac.iie.etl.read.ReadHistoryArangoData;
+import cn.ac.iie.service.read.ReadHistoryArangoData;
 import cn.ac.iie.utils.ArangoDBConnect;
 import cn.ac.iie.utils.ExecutorThreadPool;
 import com.arangodb.ArangoCursor;
@@ -15,10 +15,12 @@ import java.util.concurrent.ConcurrentHashMap;
 public class BaseArangoData {
     private static final Logger LOG = LoggerFactory.getLogger(BaseArangoData.class);
 
-    public static ConcurrentHashMap<String, BaseEdgeDocument> v_Fqdn_Map = new ConcurrentHashMap<>();
-    public static ConcurrentHashMap<String, BaseEdgeDocument> v_Ip_Map = new ConcurrentHashMap<>();
-    public static ConcurrentHashMap<String, BaseEdgeDocument> e_Fqdn_Address_Ip_Map = new ConcurrentHashMap<>();
-    public static ConcurrentHashMap<String, BaseEdgeDocument> e_Ip_Visit_Fqdn_Map = new ConcurrentHashMap<>();
+    static ConcurrentHashMap<String, BaseEdgeDocument> v_Fqdn_Map = new ConcurrentHashMap<>();
+    static ConcurrentHashMap<String, BaseEdgeDocument> v_Ip_Map = new ConcurrentHashMap<>();
+    static ConcurrentHashMap<String, BaseEdgeDocument> v_Subscriber_Map = new ConcurrentHashMap<>();
+    static ConcurrentHashMap<String, BaseEdgeDocument> e_Fqdn_Address_Ip_Map = new ConcurrentHashMap<>();
+    static ConcurrentHashMap<String, BaseEdgeDocument> e_Ip_Visit_Fqdn_Map = new ConcurrentHashMap<>();
+    static ConcurrentHashMap<String, BaseEdgeDocument> e_Subsciber_Locate_Ip_Map = new ConcurrentHashMap<>();
 
     private static final ArangoDBConnect arangoDBConnect = ArangoDBConnect.getInstance();
 
@@ -28,14 +30,18 @@ public class BaseArangoData {
         long startA = System.currentTimeMillis();
         readHistoryData("FQDN", v_Fqdn_Map);
         readHistoryData("IP", v_Ip_Map);
+        readHistoryData("SUBSCRIBER",v_Subscriber_Map);
         readHistoryData("R_LOCATE_FQDN2IP", e_Fqdn_Address_Ip_Map);
         readHistoryData("R_VISIT_IP2FQDN", e_Ip_Visit_Fqdn_Map);
+        readHistoryData("R_LOCATE_SUBSCRIBER2IP",e_Subsciber_Locate_Ip_Map);
         threadPool.shutdown();
         threadPool.awaitThreadTask();
-        LOG.info("v_Fqdn_Map大小："+BaseArangoData.v_Fqdn_Map.size());
-        LOG.info("v_Ip_Map大小："+BaseArangoData.v_Ip_Map.size());
-        LOG.info("e_Fqdn_Address_Ip_Map大小："+BaseArangoData.e_Fqdn_Address_Ip_Map.size());
-        LOG.info("e_Ip_Visit_Fqdn_Map大小："+BaseArangoData.e_Ip_Visit_Fqdn_Map.size());
+        LOG.info("v_Fqdn_Map大小："+v_Fqdn_Map.size());
+        LOG.info("v_Ip_Map大小："+v_Ip_Map.size());
+        LOG.info("v_Subscriber_Map大小："+v_Subscriber_Map.size());
+        LOG.info("e_Fqdn_Address_Ip_Map大小："+e_Fqdn_Address_Ip_Map.size());
+        LOG.info("e_Ip_Visit_Fqdn_Map大小："+e_Ip_Visit_Fqdn_Map.size());
+        LOG.info("e_Subsciber_Locate_Ip_Map大小："+e_Subsciber_Locate_Ip_Map.size());
         long lastA = System.currentTimeMillis();
         LOG.info("读取ArangoDb时间："+(lastA - startA));
     }

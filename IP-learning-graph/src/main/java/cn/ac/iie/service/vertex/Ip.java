@@ -1,6 +1,6 @@
-package cn.ac.iie.etl.vertex;
+package cn.ac.iie.service.vertex;
 
-import cn.ac.iie.etl.update.Vertex;
+import cn.ac.iie.service.update.Vertex;
 import cn.ac.iie.utils.ArangoDBConnect;
 import com.arangodb.entity.BaseDocument;
 import com.arangodb.entity.BaseEdgeDocument;

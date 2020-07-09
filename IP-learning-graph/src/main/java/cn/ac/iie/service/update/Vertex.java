@@ -1,4 +1,4 @@
-package cn.ac.iie.etl.update;
+package cn.ac.iie.service.update;
 
 import cn.ac.iie.config.ApplicationConfig;
 import cn.ac.iie.utils.ArangoDBConnect;

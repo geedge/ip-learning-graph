@@ -1,4 +1,4 @@
-package cn.ac.iie.etl.read;
+package cn.ac.iie.service.read;
 
 import cn.ac.iie.utils.ArangoDBConnect;
 import com.arangodb.ArangoCursor;
