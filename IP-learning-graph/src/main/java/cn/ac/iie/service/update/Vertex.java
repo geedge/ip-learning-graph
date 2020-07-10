@@ -4,6 +4,8 @@ import cn.ac.iie.config.ApplicationConfig;
 import cn.ac.iie.utils.ArangoDBConnect;
 import com.arangodb.entity.BaseDocument;
 import com.arangodb.entity.BaseEdgeDocument;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,6 +19,7 @@ import java.util.concurrent.CountDownLatch;
  * 多线程更新vertex数据
  */
 public class Vertex extends Thread{
+    private static final Logger LOG = LoggerFactory.getLogger(Vertex.class);
 
     protected HashMap<String,  ArrayList<BaseDocument>> newDocumentHashMap;
     protected ArangoDBConnect arangoManger;
@@ -52,16 +55,17 @@ public class Vertex extends Thread{
                 }
                 if (i >= ApplicationConfig.UPDATE_ARANGO_BATCH){
                     arangoManger.overwrite(docInsert,collectionName);
-                    System.out.println("更新"+i);
+                    LOG.info("更新"+collectionName+":"+i);
                     i = 0;
                 }
             }
             if (i != 0){
                 arangoManger.overwrite(docInsert,collectionName);
-                System.out.println("更新"+i);
+                LOG.info("更新"+collectionName+":"+i);
             }
         }catch (Exception e){
             e.printStackTrace();
+            LOG.error(e.toString());
         }finally {
             countDownLatch.countDown();
         }

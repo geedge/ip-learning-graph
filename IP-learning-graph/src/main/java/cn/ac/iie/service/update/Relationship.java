@@ -3,12 +3,15 @@ package cn.ac.iie.service.update;
 import cn.ac.iie.config.ApplicationConfig;
 import cn.ac.iie.utils.ArangoDBConnect;
 import com.arangodb.entity.BaseEdgeDocument;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
 public class Relationship extends Thread {
+    private static final Logger LOG = LoggerFactory.getLogger(Relationship.class);
 
     protected HashMap<String, HashMap<String, BaseEdgeDocument>> newDocumentHashMap;
     protected ArangoDBConnect arangoManger;
@@ -43,18 +46,18 @@ public class Relationship extends Thread {
                     updateRelationship(newEdgeDocument,historyEdgeDocument,docInsert);
                     if (i >= ApplicationConfig.UPDATE_ARANGO_BATCH) {
                         arangoManger.overwrite(docInsert, collectionName);
-                        System.out.println("更新"+collectionName+":" + i);
+                        LOG.info("更新"+collectionName+":" + i);
                         i = 0;
                     }
                 }
             }
             if (i != 0) {
                 arangoManger.overwrite(docInsert, collectionName);
-                System.out.println("更新"+collectionName+":" + i);
+                LOG.info("更新"+collectionName+":" + i);
             }
         } catch (Exception e) {
             e.printStackTrace();
-            System.out.println(e.toString());
+            LOG.error(e.toString());
         }finally {
             countDownLatch.countDown();
         }

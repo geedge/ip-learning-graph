@@ -32,27 +32,31 @@ public class ReadClickhouseData {
     }
 
     public static BaseDocument getVertexIpDocument(ResultSet resultSet) throws SQLException {
+        BaseDocument newDoc = new BaseDocument();
         String ip = resultSet.getString("IP");
-        String location = resultSet.getString("location");
-        String[] locationSplit = location.split(";");
-        String ipLocationNation;
-        String ipLocationRegion;
-        if (locationSplit.length == 3) {
-            ipLocationNation = locationSplit[0];
-            ipLocationRegion = locationSplit[1];
-        } else {
-            ipLocationNation = location;
-            ipLocationRegion = location;
-        }
         long firstFoundTime = resultSet.getLong("FIRST_FOUND_TIME");
         long lastFoundTime = resultSet.getLong("LAST_FOUND_TIME");
-        BaseDocument newDoc = new BaseDocument();
+        long sessionCount = resultSet.getLong("SESSION_COUNT");
+        long bytesSum = resultSet.getLong("BYTES_SUM");
+        String ipType = resultSet.getString("ip_type");
         newDoc.setKey(ip);
         newDoc.addAttribute("IP", ip);
-        newDoc.addAttribute("IP_LOCATION_NATION", ipLocationNation);
-        newDoc.addAttribute("IP_LOCATION_REGION", ipLocationRegion);
         newDoc.addAttribute("FIRST_FOUND_TIME", firstFoundTime);
         newDoc.addAttribute("LAST_FOUND_TIME", lastFoundTime);
+        switch (ipType) {
+            case "client":
+                newDoc.addAttribute("CLIENT_SESSION_COUNT", sessionCount);
+                newDoc.addAttribute("CLIENT_BYTES_SUM", bytesSum);
+                newDoc.addAttribute("SERVER_SESSION_COUNT",0L);
+                newDoc.addAttribute("SERVER_BYTES_SUM",0L);
+                break;
+            case "server":
+                newDoc.addAttribute("SERVER_SESSION_COUNT", sessionCount);
+                newDoc.addAttribute("SERVER_BYTES_SUM", bytesSum);
+                newDoc.addAttribute("CLIENT_SESSION_COUNT",0L);
+                newDoc.addAttribute("CLIENT_BYTES_SUM",0L);
+                break;
+        }
         return newDoc;
     }
 
@@ -133,8 +137,8 @@ public class ReadClickhouseData {
         return newDoc;
     }
 
-    public static void putMapByHashcode(ResultSet resultSet, BaseEdgeDocument newDoc, HashMap<Integer, HashMap<String, HashMap<String, BaseEdgeDocument>>> map,String schema) throws SQLException {
-        if (newDoc != null){
+    public static void putMapByHashcode(BaseEdgeDocument newDoc, HashMap<Integer, HashMap<String, HashMap<String, BaseEdgeDocument>>> map, String schema) throws SQLException {
+        if (newDoc != null) {
             String key = newDoc.getKey();
             int i = Math.abs(key.hashCode()) % ApplicationConfig.THREAD_POOL_NUMBER;
             HashMap<String, HashMap<String, BaseEdgeDocument>> documentHashMap = map.getOrDefault(i, new HashMap());
@@ -145,7 +149,7 @@ public class ReadClickhouseData {
         }
     }
 
-    public static boolean isDomain(String fqdn) {
+    private static boolean isDomain(String fqdn) {
         try {
             String[] fqdnArr = fqdn.split("\\.");
             if (fqdnArr.length < 4 || fqdnArr.length > 4) {
@@ -182,10 +186,10 @@ public class ReadClickhouseData {
         long[] timeLimit = getTimeLimit();
         long maxTime = timeLimit[0];
         long minTime = timeLimit[1];
-        String where = " common_recv_time >= " + minTime + " AND common_recv_time <= " + maxTime + " AND (common_schema_type = 'HTTP' or common_schema_type = 'SSL')";
-        String clientIpSql = "SELECT common_client_ip AS IP, common_client_location AS location, common_recv_time FROM tsg_galaxy_v3.connection_record_log where " + where;
-        String serverIpSql = "SELECT common_server_ip AS IP, common_server_location AS location, common_recv_time FROM tsg_galaxy_v3.connection_record_log where " + where;
-        return "SELECT IP,location,MIN(common_recv_time) AS FIRST_FOUND_TIME,MAX(common_recv_time) AS LAST_FOUND_TIME,COUNT(*) AS IP_COUNT_TOTAL FROM((" + clientIpSql + ") UNION ALL (" + serverIpSql + ")) GROUP BY IP,location";
+        String where = " common_recv_time >= " + minTime + " AND common_recv_time <= " + maxTime;
+        String clientIpSql = "SELECT common_client_ip AS IP, MIN(common_recv_time) AS FIRST_FOUND_TIME,MAX(common_recv_time) AS LAST_FOUND_TIME,count(*) as SESSION_COUNT,sum(common_c2s_byte_num) as BYTES_SUM,'client' as ip_type FROM tsg_galaxy_v3.connection_record_log where " + where + " group by IP";
+        String serverIpSql = "SELECT common_server_ip AS IP, MIN(common_recv_time) AS FIRST_FOUND_TIME,MAX(common_recv_time) AS LAST_FOUND_TIME,count(*) as SESSION_COUNT,sum(common_s2c_byte_num) as BYTES_SUM,'server' as ip_type FROM tsg_galaxy_v3.connection_record_log where " + where + " group by IP";
+        return "SELECT * FROM((" + clientIpSql + ") UNION ALL (" + serverIpSql + "))";
     }
 
     public static String getEFqdnAddressIpSql() {
@@ -208,20 +212,20 @@ public class ReadClickhouseData {
         return "SELECT * FROM ((" + sslSql + ") UNION ALL (" + httpSql + "))WHERE FQDN != ''";
     }
 
-    public static String getVertexSubscriberSql(){
+    public static String getVertexSubscriberSql() {
         long[] timeLimit = getTimeLimit();
         long maxTime = timeLimit[0];
         long minTime = timeLimit[1];
-        String where = " common_recv_time >= "+minTime+" AND common_recv_time <= "+maxTime+" AND common_subscriber_id != '' AND radius_packet_type = 4 AND radius_acct_status_type = 1";
-        return "SELECT common_subscriber_id,MAX(common_recv_time) as LAST_FOUND_TIME,MIN(common_recv_time) as FIRST_FOUND_TIME FROM radius_record_log WHERE"+where+" GROUP BY common_subscriber_id";
+        String where = " common_recv_time >= " + minTime + " AND common_recv_time <= " + maxTime + " AND common_subscriber_id != '' AND radius_packet_type = 4 AND radius_acct_status_type = 1";
+        return "SELECT common_subscriber_id,MAX(common_recv_time) as LAST_FOUND_TIME,MIN(common_recv_time) as FIRST_FOUND_TIME FROM radius_record_log WHERE" + where + " GROUP BY common_subscriber_id";
     }
 
-    public static String getRelationshipSubsciberLocateIpSql(){
+    public static String getRelationshipSubsciberLocateIpSql() {
         long[] timeLimit = getTimeLimit();
         long maxTime = timeLimit[0];
         long minTime = timeLimit[1];
-        String where = " common_recv_time >= "+minTime+" AND common_recv_time <= "+maxTime+" AND common_subscriber_id != '' AND radius_framed_ip != '' AND radius_packet_type = 4 AND radius_acct_status_type = 1";
-        return "SELECT common_subscriber_id,radius_framed_ip,MAX(common_recv_time) as LAST_FOUND_TIME,MIN(common_recv_time) as FIRST_FOUND_TIME,COUNT(*) as COUNT_TOTAL FROM radius_record_log WHERE"+where+" GROUP BY common_subscriber_id,radius_framed_ip";
+        String where = " common_recv_time >= " + minTime + " AND common_recv_time <= " + maxTime + " AND common_subscriber_id != '' AND radius_framed_ip != '' AND radius_packet_type = 4 AND radius_acct_status_type = 1";
+        return "SELECT common_subscriber_id,radius_framed_ip,MAX(common_recv_time) as LAST_FOUND_TIME,MIN(common_recv_time) as FIRST_FOUND_TIME,COUNT(*) as COUNT_TOTAL FROM radius_record_log WHERE" + where + " GROUP BY common_subscriber_id,radius_framed_ip";
     }
 
     private static long[] getTimeLimit() {

@@ -129,7 +129,7 @@ public class BaseClickhouseData {
             while (resultSet.next()){
                 BaseEdgeDocument newDoc = getRelationshipSubsciberLocateIpDocument(resultSet);
                 String key = newDoc.getKey();
-                putMapByHashcode(resultSet, newDoc, eSubsciberLocateIpMap,key);
+                putMapByHashcode(newDoc, eSubsciberLocateIpMap,key);
             }
             long last = System.currentTimeMillis();
             LOG.info(sql + "\n读取clickhouse ESubsciberLocateIp时间：" + (last - start));
@@ -154,7 +154,7 @@ public class BaseClickhouseData {
             while (resultSet.next()) {
                 BaseEdgeDocument newDoc = getRelationFqdnAddressIpDocument(resultSet);
                 String commonSchemaType = resultSet.getString("common_schema_type");
-                putMapByHashcode(resultSet, newDoc, eFqdnAddressIpMap,commonSchemaType);
+                putMapByHashcode(newDoc, eFqdnAddressIpMap,commonSchemaType);
             }
             long last = System.currentTimeMillis();
             LOG.info(sql + "\n读取clickhouse EFqdnAddressIp时间：" + (last - start));
@@ -177,7 +177,7 @@ public class BaseClickhouseData {
             while (resultSet.next()) {
                 BaseEdgeDocument newDoc = getRelationIpVisitFqdnDocument(resultSet);
                 String commonSchemaType = resultSet.getString("common_schema_type");
-                putMapByHashcode(resultSet, newDoc, eIpVisitFqdnMap,commonSchemaType);
+                putMapByHashcode(newDoc, eIpVisitFqdnMap,commonSchemaType);
             }
             long last = System.currentTimeMillis();
             LOG.info(sql + "\n读取clickhouse EIpVisitFqdn时间：" + (last - start));
