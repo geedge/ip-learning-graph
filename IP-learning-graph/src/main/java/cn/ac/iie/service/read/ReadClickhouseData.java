@@ -13,6 +13,8 @@ import java.util.regex.Pattern;
 
 public class ReadClickhouseData {
 
+    public static long currentHour = System.currentTimeMillis() / (60 * 60 * 1000) * 60 * 60;
+
     private static Pattern pattern = Pattern.compile("^[\\d]*$");
     private static final Logger LOG = LoggerFactory.getLogger(ReadClickhouseData.class);
 
@@ -100,6 +102,10 @@ public class ReadClickhouseData {
             long lastFoundTime = resultSet.getLong("LAST_FOUND_TIME");
             long countTotal = resultSet.getLong("COUNT_TOTAL");
             String[] distCipRecents = (String[]) resultSet.getArray("DIST_CIP_RECENT").getArray();
+            long[] clientIpTs = new long[distCipRecents.length];
+            for (int i = 0;i < clientIpTs.length;i++){
+                clientIpTs[i] = currentHour;
+            }
 
             String key = vFqdn + "-" + vIp;
             newDoc = new BaseEdgeDocument();
@@ -109,8 +115,8 @@ public class ReadClickhouseData {
             newDoc.addAttribute("FIRST_FOUND_TIME", firstFoundTime);
             newDoc.addAttribute("LAST_FOUND_TIME", lastFoundTime);
             newDoc.addAttribute("COUNT_TOTAL", countTotal);
-            newDoc.addAttribute("DIST_CIP_RECENT", distCipRecents);
-            newDoc.addAttribute("DIST_CIP_TOTAL", distCipRecents);
+            newDoc.addAttribute("DIST_CIP", distCipRecents);
+            newDoc.addAttribute("DIST_CIP_TS",clientIpTs);
 
         }
         return newDoc;
@@ -176,7 +182,7 @@ public class ReadClickhouseData {
         long[] timeLimit = getTimeLimit();
         long maxTime = timeLimit[0];
         long minTime = timeLimit[1];
-        String where = "common_recv_time >= " + minTime + " AND common_recv_time <= " + maxTime;
+        String where = "common_recv_time >= " + minTime + " AND common_recv_time < " + maxTime;
         String sslSql = "SELECT ssl_sni AS FQDN,MAX( common_recv_time ) AS LAST_FOUND_TIME,MIN( common_recv_time ) AS FIRST_FOUND_TIME FROM tsg_galaxy_v3.connection_record_log WHERE " + where + " and common_schema_type = 'SSL' GROUP BY ssl_sni";
         String httpSql = "SELECT http_host AS FQDN,MAX( common_recv_time ) AS LAST_FOUND_TIME,MIN( common_recv_time ) AS FIRST_FOUND_TIME FROM tsg_galaxy_v3.connection_record_log WHERE " + where + " and common_schema_type = 'HTTP' GROUP BY http_host";
         return "SELECT FQDN,MAX( LAST_FOUND_TIME ) AS LAST_FOUND_TIME,MIN( FIRST_FOUND_TIME ) AS FIRST_FOUND_TIME FROM ((" + sslSql + ") UNION ALL (" + httpSql + ")) GROUP BY FQDN HAVING FQDN != ''";
@@ -186,7 +192,7 @@ public class ReadClickhouseData {
         long[] timeLimit = getTimeLimit();
         long maxTime = timeLimit[0];
         long minTime = timeLimit[1];
-        String where = " common_recv_time >= " + minTime + " AND common_recv_time <= " + maxTime;
+        String where = " common_recv_time >= " + minTime + " AND common_recv_time < " + maxTime;
         String clientIpSql = "SELECT common_client_ip AS IP, MIN(common_recv_time) AS FIRST_FOUND_TIME,MAX(common_recv_time) AS LAST_FOUND_TIME,count(*) as SESSION_COUNT,sum(common_c2s_byte_num) as BYTES_SUM,'client' as ip_type FROM tsg_galaxy_v3.connection_record_log where " + where + " group by IP";
         String serverIpSql = "SELECT common_server_ip AS IP, MIN(common_recv_time) AS FIRST_FOUND_TIME,MAX(common_recv_time) AS LAST_FOUND_TIME,count(*) as SESSION_COUNT,sum(common_s2c_byte_num) as BYTES_SUM,'server' as ip_type FROM tsg_galaxy_v3.connection_record_log where " + where + " group by IP";
         return "SELECT * FROM((" + clientIpSql + ") UNION ALL (" + serverIpSql + "))";
@@ -196,9 +202,9 @@ public class ReadClickhouseData {
         long[] timeLimit = getTimeLimit();
         long maxTime = timeLimit[0];
         long minTime = timeLimit[1];
-        String where = " common_recv_time >= " + minTime + " AND common_recv_time <= " + maxTime;
-        String sslSql = "SELECT ssl_sni AS FQDN,common_server_ip,MAX(common_recv_time) AS LAST_FOUND_TIME,MIN(common_recv_time) AS FIRST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL,groupUniqArray(30)(common_client_ip) AS DIST_CIP_RECENT,'SSL' AS  common_schema_type FROM tsg_galaxy_v3.connection_record_log WHERE " + where + " and common_schema_type = 'SSL' GROUP BY ssl_sni,common_server_ip";
-        String httpSql = "SELECT http_host AS FQDN,common_server_ip,MAX(common_recv_time) AS LAST_FOUND_TIME,MIN(common_recv_time) AS FIRST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL,groupUniqArray(30)(common_client_ip) AS DIST_CIP_RECENT,'HTTP' AS common_schema_type FROM tsg_galaxy_v3.connection_record_log WHERE " + where + " and common_schema_type = 'HTTP' GROUP BY http_host,common_server_ip";
+        String where = " common_recv_time >= " + minTime + " AND common_recv_time < " + maxTime;
+        String sslSql = "SELECT ssl_sni AS FQDN,common_server_ip,MAX(common_recv_time) AS LAST_FOUND_TIME,MIN(common_recv_time) AS FIRST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL,groupUniqArray(100)(common_client_ip) AS DIST_CIP_RECENT,'SSL' AS  common_schema_type FROM tsg_galaxy_v3.connection_record_log WHERE " + where + " and common_schema_type = 'SSL' GROUP BY ssl_sni,common_server_ip";
+        String httpSql = "SELECT http_host AS FQDN,common_server_ip,MAX(common_recv_time) AS LAST_FOUND_TIME,MIN(common_recv_time) AS FIRST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL,groupUniqArray(100)(common_client_ip) AS DIST_CIP_RECENT,'HTTP' AS common_schema_type FROM tsg_galaxy_v3.connection_record_log WHERE " + where + " and common_schema_type = 'HTTP' GROUP BY http_host,common_server_ip";
         return "SELECT * FROM ((" + sslSql + ") UNION ALL (" + httpSql + "))WHERE FQDN != ''";
     }
 
@@ -206,7 +212,7 @@ public class ReadClickhouseData {
         long[] timeLimit = getTimeLimit();
         long maxTime = timeLimit[0];
         long minTime = timeLimit[1];
-        String where = " common_recv_time >= " + minTime + " AND common_recv_time <= " + maxTime;
+        String where = " common_recv_time >= " + minTime + " AND common_recv_time < " + maxTime;
         String httpSql = "SELECT http_host AS FQDN,common_client_ip,MAX(common_recv_time) AS LAST_FOUND_TIME,MIN(common_recv_time) AS FIRST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL,'HTTP' AS common_schema_type FROM tsg_galaxy_v3.connection_record_log WHERE " + where + " and common_schema_type = 'HTTP' GROUP BY http_host,common_client_ip";
         String sslSql = "SELECT ssl_sni AS FQDN,common_client_ip,MAX(common_recv_time) AS LAST_FOUND_TIME,MIN(common_recv_time) AS FIRST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL,'SSL' AS common_schema_type FROM tsg_galaxy_v3.connection_record_log WHERE common_schema_type = 'SSL' GROUP BY ssl_sni,common_client_ip";
         return "SELECT * FROM ((" + sslSql + ") UNION ALL (" + httpSql + "))WHERE FQDN != ''";
@@ -216,7 +222,7 @@ public class ReadClickhouseData {
         long[] timeLimit = getTimeLimit();
         long maxTime = timeLimit[0];
         long minTime = timeLimit[1];
-        String where = " common_recv_time >= " + minTime + " AND common_recv_time <= " + maxTime + " AND common_subscriber_id != '' AND radius_packet_type = 4 AND radius_acct_status_type = 1";
+        String where = " common_recv_time >= " + minTime + " AND common_recv_time < " + maxTime + " AND common_subscriber_id != '' AND radius_packet_type = 4 AND radius_acct_status_type = 1";
         return "SELECT common_subscriber_id,MAX(common_recv_time) as LAST_FOUND_TIME,MIN(common_recv_time) as FIRST_FOUND_TIME FROM radius_record_log WHERE" + where + " GROUP BY common_subscriber_id";
     }
 
@@ -224,12 +230,12 @@ public class ReadClickhouseData {
         long[] timeLimit = getTimeLimit();
         long maxTime = timeLimit[0];
         long minTime = timeLimit[1];
-        String where = " common_recv_time >= " + minTime + " AND common_recv_time <= " + maxTime + " AND common_subscriber_id != '' AND radius_framed_ip != '' AND radius_packet_type = 4 AND radius_acct_status_type = 1";
+        String where = " common_recv_time >= " + minTime + " AND common_recv_time < " + maxTime + " AND common_subscriber_id != '' AND radius_framed_ip != '' AND radius_packet_type = 4 AND radius_acct_status_type = 1";
         return "SELECT common_subscriber_id,radius_framed_ip,MAX(common_recv_time) as LAST_FOUND_TIME,MIN(common_recv_time) as FIRST_FOUND_TIME,COUNT(*) as COUNT_TOTAL FROM radius_record_log WHERE" + where + " GROUP BY common_subscriber_id,radius_framed_ip";
     }
 
     private static long[] getTimeLimit() {
-        long maxTime = System.currentTimeMillis() / 1000;
+        long maxTime = currentHour;
         long minTime = maxTime - 3600;
 //        long maxTime = ApplicationConfig.READ_CLICKHOUSE_MAX_TIME;
 //        long minTime = ApplicationConfig.READ_CLICKHOUSE_MIN_TIME;

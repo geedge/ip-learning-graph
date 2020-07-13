@@ -12,6 +12,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * 获取arangoDB历史数据
+ */
 public class BaseArangoData {
     private static final Logger LOG = LoggerFactory.getLogger(BaseArangoData.class);
 

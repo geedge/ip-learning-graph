@@ -34,7 +34,7 @@ public class BaseClickhouseData {
     private Statement statement;
 
     void BaseVFqdn() {
-        initializeVertexMap(vFqdnMap);
+        initializeMap(vFqdnMap);
         LOG.info("FQDN resultMap初始化完成");
         String sql = getVFqdnSql();
         long start = System.currentTimeMillis();
@@ -63,7 +63,7 @@ public class BaseClickhouseData {
     }
 
     void BaseVIp() {
-        initializeVertexMap(vIpMap);
+        initializeMap(vIpMap);
         LOG.info("IP resultMap初始化完成");
         String sql = getVIpSql();
         long start = System.currentTimeMillis();
@@ -90,7 +90,7 @@ public class BaseClickhouseData {
     }
 
     void BaseVertexSubscriber(){
-        initializeVertexMap(vSubscriberMap);
+        initializeMap(vSubscriberMap);
         LOG.info("SUBSCRIBER resultMap初始化完成");
         String sql = getVertexSubscriberSql();
         long start = System.currentTimeMillis();
@@ -118,7 +118,7 @@ public class BaseClickhouseData {
     }
 
     void BaseRelationshipSubscriberLocateIp(){
-        initializeVertexMap(eSubsciberLocateIpMap);
+        initializeMap(eSubsciberLocateIpMap);
         LOG.info("R_LOCATE_SUBSCRIBER2IP");
         String sql = getRelationshipSubsciberLocateIpSql();
         long start = System.currentTimeMillis();
@@ -142,7 +142,7 @@ public class BaseClickhouseData {
     }
 
     void BaseEFqdnAddressIp() {
-        initializeVertexMap(eFqdnAddressIpMap);
+        initializeMap(eFqdnAddressIpMap);
         LOG.info("R_LOCATE_FQDN2IP resultMap初始化完成");
         String sql = getEFqdnAddressIpSql();
         long start = System.currentTimeMillis();
@@ -166,7 +166,7 @@ public class BaseClickhouseData {
     }
 
     void BaseEIpVisitFqdn() {
-        initializeVertexMap(eIpVisitFqdnMap);
+        initializeMap(eIpVisitFqdnMap);
         LOG.info("R_VISIT_IP2FQDN resultMap初始化完成");
         String sql = getEIpVisitFqdnSql();
         long start = System.currentTimeMillis();
@@ -188,7 +188,7 @@ public class BaseClickhouseData {
         }
     }
 
-    private void initializeVertexMap(Map map){
+    private void initializeMap(Map map){
         try {
             for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
                 map.put(i, new HashMap<>());

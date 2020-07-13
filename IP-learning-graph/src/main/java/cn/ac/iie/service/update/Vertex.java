@@ -21,11 +21,11 @@ import java.util.concurrent.CountDownLatch;
 public class Vertex extends Thread{
     private static final Logger LOG = LoggerFactory.getLogger(Vertex.class);
 
-    protected HashMap<String,  ArrayList<BaseDocument>> newDocumentHashMap;
-    protected ArangoDBConnect arangoManger;
-    protected String collectionName;
-    protected ConcurrentHashMap<String, BaseEdgeDocument> historyDocumentMap;
-    protected CountDownLatch countDownLatch;
+    private HashMap<String,  ArrayList<BaseDocument>> newDocumentHashMap;
+    private ArangoDBConnect arangoManger;
+    private String collectionName;
+    private ConcurrentHashMap<String, BaseEdgeDocument> historyDocumentMap;
+    private CountDownLatch countDownLatch;
 
     public Vertex(HashMap<String,  ArrayList<BaseDocument>> newDocumentHashMap,
                   ArangoDBConnect arangoManger,
