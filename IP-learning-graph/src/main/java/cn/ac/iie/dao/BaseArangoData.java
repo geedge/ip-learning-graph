@@ -35,7 +35,7 @@ public class BaseArangoData {
         readHistoryData("IP", v_Ip_Map);
         readHistoryData("SUBSCRIBER",v_Subscriber_Map);
         readHistoryData("R_LOCATE_FQDN2IP", e_Fqdn_Address_Ip_Map);
-        readHistoryData("R_VISIT_IP2FQDN", e_Ip_Visit_Fqdn_Map);
+//        readHistoryData("R_VISIT_IP2FQDN", e_Ip_Visit_Fqdn_Map);
         readHistoryData("R_LOCATE_SUBSCRIBER2IP",e_Subsciber_Locate_Ip_Map);
         threadPool.shutdown();
         threadPool.awaitThreadTask();

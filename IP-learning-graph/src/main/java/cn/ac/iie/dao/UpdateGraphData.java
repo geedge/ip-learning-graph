@@ -41,8 +41,8 @@ public class UpdateGraphData {
             baseClickhouseData.BaseEFqdnAddressIp();
             updateRelationFqdnAddressIp();
 
-            baseClickhouseData.BaseEIpVisitFqdn();
-            updateRelationIpVisitFqdn();
+//            baseClickhouseData.BaseEIpVisitFqdn();
+//            updateRelationIpVisitFqdn();
 
             baseClickhouseData.BaseVertexSubscriber();
             updateVertexSubscriber();
