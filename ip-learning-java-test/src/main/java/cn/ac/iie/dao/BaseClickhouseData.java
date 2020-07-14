@@ -36,19 +36,19 @@ public class BaseClickhouseData {
 
     static {
         for (int i = 0;i < ApplicationConfig.THREAD_POOL_NUMBER;i++){
-            vFqdnMap.put(i,new HashMap<String, ArrayList<BaseDocument>>());
+            vFqdnMap.put(i,new HashMap<>());
         }
         System.out.println("V_FQDN resultMap初始化完成");
         for (int i = 0;i < ApplicationConfig.THREAD_POOL_NUMBER;i++){
-            vIpMap.put(i,new HashMap<String, BaseDocument>());
+            vIpMap.put(i,new HashMap<>());
         }
         System.out.println("V_IP resultMap初始化完成");
         for (int i = 0;i < ApplicationConfig.THREAD_POOL_NUMBER;i++){
-            eFqdnAddressIpMap.put(i,new HashMap<String, BaseEdgeDocument>());
+            eFqdnAddressIpMap.put(i,new HashMap<>());
         }
         System.out.println("E_ADDRESS_V_FQDN_TO_V_IP resultMap初始化完成");
         for (int i = 0;i < ApplicationConfig.THREAD_POOL_NUMBER;i++){
-            eIpVisitFqdnMap.put(i,new HashMap<String, BaseEdgeDocument>());
+            eIpVisitFqdnMap.put(i,new HashMap<>());
         }
         System.out.println("E_VISIT_V_IP_TO_V_FQDN resultMap初始化完成");
     }
