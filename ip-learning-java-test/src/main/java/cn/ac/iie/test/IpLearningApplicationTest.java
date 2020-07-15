@@ -1,74 +1,25 @@
 package cn.ac.iie.test;
 
 import cn.ac.iie.dao.BaseArangoData;
-import cn.ac.iie.dao.BaseClickhouseData;
-import cn.ac.iie.utils.ArangoDBConnect;
-import cn.ac.iie.utils.ExecutorThreadPool;
+import cn.ac.iie.dao.UpdateGraphData;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.CountDownLatch;
 
 public class IpLearningApplicationTest {
+    private static final Logger LOG = LoggerFactory.getLogger(IpLearningApplicationTest.class);
 
     public static void main(String[] args) {
-        long startA = System.currentTimeMillis();
+        long start = System.currentTimeMillis();
+        LOG.info("Ip Learning Application开始运行");
         BaseArangoData baseArangoData = new BaseArangoData();
         baseArangoData.baseDocumentDataMap();
 
+        LOG.info("历史数据读取完成,开始更新数据");
+        UpdateGraphData updateGraphData = new UpdateGraphData();
+        updateGraphData.updateArango();
+        long last = System.currentTimeMillis();
+        LOG.info("共计运行时间："+(last - start));
 
-        long lastA = System.currentTimeMillis();
-        System.out.println("读取ArangoDb时间："+(lastA - startA));
-
-
-        /*
-
-        long startC = System.currentTimeMillis();
-        CountDownLatch countDownLatch = new CountDownLatch(4);
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                BaseClickhouseData.BaseVFqdn();
-                countDownLatch.countDown();
-            }
-        }).start();
-
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                BaseClickhouseData.BaseVIp();
-                countDownLatch.countDown();
-            }
-        }).start();
-
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                BaseClickhouseData.BaseEFqdnAddressIp();
-                countDownLatch.countDown();
-            }
-        }).start();
-
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                BaseClickhouseData.BaseEIpVisitFqdn();
-                countDownLatch.countDown();
-            }
-        }).start();
-        try {
-            countDownLatch.await();
-        }catch (Exception e){
-            e.printStackTrace();
-        }
-        long lastC = System.currentTimeMillis();
-        System.out.println("更新ArangoDb时间："+(lastC - startC));
-
-        */
-
-        System.out.println(BaseArangoData.v_Fqdn_Map.size());
-        System.out.println(BaseArangoData.v_Ip_Map.size());
-        System.out.println(BaseArangoData.e_Fqdn_Address_Ip_Map.size());
-        System.out.println(BaseArangoData.e_Ip_Visit_Fqdn_Map.size());
-
-        ArangoDBConnect.clean();
     }
 }

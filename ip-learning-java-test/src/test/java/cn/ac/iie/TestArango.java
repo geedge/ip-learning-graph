@@ -16,6 +16,6 @@ public class TestArango {
             BaseEdgeDocument next = baseEdgeDocuments.next();
             System.out.println(next.toString());
         }
-        ArangoDBConnect.clean();
+//        ArangoDBConnect.clean();
     }
 }

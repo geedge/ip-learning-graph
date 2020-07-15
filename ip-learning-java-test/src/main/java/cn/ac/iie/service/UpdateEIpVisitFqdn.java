@@ -1,4 +1,4 @@
-package cn.ac.iie.etl;
+package cn.ac.iie.service;
 
 import cn.ac.iie.config.ApplicationConfig;
 import cn.ac.iie.dao.BaseArangoData;
@@ -10,12 +10,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Set;
 
-public class UpdateEFqdnAddressIp implements Runnable {
+public class UpdateEIpVisitFqdn implements Runnable {
     private HashMap<String, BaseEdgeDocument> documentHashMap;
 
-    private static ArangoDBConnect arangoManger = ArangoDBConnect.getInstance();
+    private static final ArangoDBConnect arangoManger = ArangoDBConnect.getInstance();
 
-    public UpdateEFqdnAddressIp(HashMap<String, BaseEdgeDocument> documentHashMap) {
+    public UpdateEIpVisitFqdn(HashMap<String, BaseEdgeDocument> documentHashMap) {
         this.documentHashMap = documentHashMap;
     }
     @Override
@@ -29,7 +29,7 @@ public class UpdateEFqdnAddressIp implements Runnable {
                 BaseEdgeDocument newEdgeDocument = documentHashMap.getOrDefault(key, null);
                 if (newEdgeDocument != null){
                     i += 1;
-                    BaseEdgeDocument edgeDocument = BaseArangoData.e_Fqdn_Address_Ip_Map.getOrDefault(key, null);
+                    BaseEdgeDocument edgeDocument = BaseArangoData.e_Ip_Visit_Fqdn_Map.getOrDefault(key, null);
                     if (edgeDocument != null){
                         Object lastFoundTime = newEdgeDocument.getAttribute("LAST_FOUND_TIME");
                         long countTotal = Long.parseLong(newEdgeDocument.getAttribute("COUNT_TOTAL").toString());
@@ -42,13 +42,13 @@ public class UpdateEFqdnAddressIp implements Runnable {
                     }
                 }
                 if (i >= ApplicationConfig.UPDATE_ARANGO_BATCH){
-                    arangoManger.insertAndUpdate(docInsert,docUpdate,"E_ADDRESS_V_FQDN_TO_V_IP");
+                    arangoManger.insertAndUpdate(docInsert,docUpdate,"E_VISIT_V_IP_TO_V_FQDN");
                     System.out.println("更新"+i);
                     i = 0;
                 }
             }
             if (i != 0){
-                arangoManger.insertAndUpdate(docInsert,docUpdate,"E_ADDRESS_V_FQDN_TO_V_IP");
+                arangoManger.insertAndUpdate(docInsert,docUpdate,"E_VISIT_V_IP_TO_V_FQDN");
                 System.out.println("更新"+i);
             }
         }catch (Exception e){
