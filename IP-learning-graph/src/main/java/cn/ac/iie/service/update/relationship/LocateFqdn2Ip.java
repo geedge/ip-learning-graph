@@ -1,4 +1,4 @@
-package cn.ac.iie.service.relationship;
+package cn.ac.iie.service.update.relationship;
 
 import cn.ac.iie.service.read.ReadClickhouseData;
 import cn.ac.iie.service.update.Relationship;
@@ -11,7 +11,7 @@ import java.util.concurrent.CountDownLatch;
 
 public class LocateFqdn2Ip extends Relationship {
 
-    public LocateFqdn2Ip(HashMap<String, HashMap<String, BaseEdgeDocument>> newDocumentHashMap,
+    public LocateFqdn2Ip(HashMap<String, ArrayList<BaseEdgeDocument>> newDocumentHashMap,
                          ArangoDBConnect arangoManger,
                          String collectionName,
                          ConcurrentHashMap<String, BaseEdgeDocument> historyDocumentMap,
@@ -22,25 +22,16 @@ public class LocateFqdn2Ip extends Relationship {
     @Override
     protected void mergeFunction(Map<String, Object> properties, BaseEdgeDocument schemaEdgeDoc){
         super.mergeFunction(properties,schemaEdgeDoc);
-        mergeDistinctClientIp(properties,schemaEdgeDoc);
+        mergeProtocol(properties, schemaEdgeDoc);
     }
 
     @Override
     protected void updateFunction(BaseEdgeDocument newEdgeDocument, BaseEdgeDocument historyEdgeDocument) {
         super.updateFunction(newEdgeDocument, historyEdgeDocument);
-        updateDistinctClientIp(newEdgeDocument, historyEdgeDocument);
-    }
-
-    private void mergeDistinctClientIp(Map<String, Object> properties, BaseEdgeDocument schemaEdgeDoc){
-        String[] schemaDistCipRecents = (String[]) schemaEdgeDoc.getAttribute("DIST_CIP");
-        String[] distCipRecents = (String[]) properties.get("DIST_CIP");
-        Object[] mergeClientIp = distinctIp(schemaDistCipRecents, distCipRecents);
-        long[] mergeClientIpTs = new long[mergeClientIp.length];
-        for (int i = 0;i < mergeClientIpTs.length;i++){
-            mergeClientIpTs[i] = ReadClickhouseData.currentHour;
+        for (String schema:ReadClickhouseData.protocolSet){
+            updateProcotol(historyEdgeDocument,schema,newEdgeDocument);
         }
-        properties.put("DIST_CIP", mergeClientIp);
-        properties.put("DIST_CIP_TS",mergeClientIpTs);
+        updateDistinctClientIp(newEdgeDocument, historyEdgeDocument);
     }
 
     private void updateDistinctClientIp(BaseEdgeDocument newEdgeDocument,BaseEdgeDocument edgeDocument){
@@ -54,7 +45,7 @@ public class LocateFqdn2Ip extends Relationship {
         }
         Object[] distCipRecent = (Object[])newEdgeDocument.getAttribute("DIST_CIP");
         for (Object cip:distCipRecent){
-            distCipToTs.put(cip.toString(),ReadClickhouseData.currentHour);
+            distCipToTs.put(cip.toString(), ReadClickhouseData.currentHour);
         }
 
         Map<String, Long> sortDistCip = sortMapByValue(distCipToTs);
@@ -74,8 +65,8 @@ public class LocateFqdn2Ip extends Relationship {
         List<Map.Entry<String, Long>> entryList = new ArrayList<>(oriMap.entrySet());
         entryList.sort((o1, o2) -> o2.getValue().compareTo(o1.getValue()));
 
-        if(entryList.size() > 100){
-            for(Map.Entry<String, Long> set:entryList.subList(0, 100)){
+        if(entryList.size() > 10000){
+            for(Map.Entry<String, Long> set:entryList.subList(0, 10000)){
                 sortedMap.put(set.getKey(), set.getValue());
             }
         }else {
@@ -84,17 +75,6 @@ public class LocateFqdn2Ip extends Relationship {
             }
         }
         return sortedMap;
-    }
-
-    private Object[] distinctIp(Object[] distCipTotalsSrc,Object[] distCipRecentsSrc){
-        HashSet<Object> dIpSet = new HashSet<>();
-        dIpSet.addAll(Arrays.asList(distCipRecentsSrc));
-        dIpSet.addAll(Arrays.asList(distCipTotalsSrc));
-        Object[] distCipTotals = dIpSet.toArray();
-        if (distCipTotals.length > 100) {
-            System.arraycopy(distCipTotals, 0, distCipTotals, 0, 100);
-        }
-        return distCipTotals;
     }
 
 }

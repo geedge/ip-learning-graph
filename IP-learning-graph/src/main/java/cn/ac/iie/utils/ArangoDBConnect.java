@@ -108,7 +108,6 @@ public class ArangoDBConnect {
             }
         }catch (Exception e){
             LOG.error("更新失败："+e.toString());
-//            clean();
         }finally {
             docOverwrite.clear();
         }

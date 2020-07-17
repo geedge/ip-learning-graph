@@ -8,15 +8,30 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.regex.Pattern;
 
+/**
+ * @author wlh
+ */
 public class ReadClickhouseData {
 
     public static long currentHour = System.currentTimeMillis() / (60 * 60 * 1000) * 60 * 60;
 
     private static Pattern pattern = Pattern.compile("^[\\d]*$");
     private static final Logger LOG = LoggerFactory.getLogger(ReadClickhouseData.class);
+
+
+    public static HashSet<String> protocolSet;
+
+    static {
+        protocolSet = new HashSet<>();
+        protocolSet.add("HTTP");
+        protocolSet.add("TLS");
+        protocolSet.add("DNS");
+    }
 
     public static BaseDocument getVertexFqdnDocument(ResultSet resultSet) throws SQLException {
         String fqdnName = resultSet.getString("FQDN");
@@ -49,17 +64,18 @@ public class ReadClickhouseData {
             case "client":
                 newDoc.addAttribute("CLIENT_SESSION_COUNT", sessionCount);
                 newDoc.addAttribute("CLIENT_BYTES_SUM", bytesSum);
-                newDoc.addAttribute("SERVER_SESSION_COUNT",0L);
-                newDoc.addAttribute("SERVER_BYTES_SUM",0L);
+                newDoc.addAttribute("SERVER_SESSION_COUNT", 0L);
+                newDoc.addAttribute("SERVER_BYTES_SUM", 0L);
                 break;
             case "server":
                 newDoc.addAttribute("SERVER_SESSION_COUNT", sessionCount);
                 newDoc.addAttribute("SERVER_BYTES_SUM", bytesSum);
-                newDoc.addAttribute("CLIENT_SESSION_COUNT",0L);
-                newDoc.addAttribute("CLIENT_BYTES_SUM",0L);
+                newDoc.addAttribute("CLIENT_SESSION_COUNT", 0L);
+                newDoc.addAttribute("CLIENT_BYTES_SUM", 0L);
                 break;
+            default:
         }
-        newDoc.addAttribute("COMMON_LINK_INFO","");
+        newDoc.addAttribute("COMMON_LINK_INFO", "");
         return newDoc;
     }
 
@@ -102,9 +118,10 @@ public class ReadClickhouseData {
             long firstFoundTime = resultSet.getLong("FIRST_FOUND_TIME");
             long lastFoundTime = resultSet.getLong("LAST_FOUND_TIME");
             long countTotal = resultSet.getLong("COUNT_TOTAL");
+            String schemaType = resultSet.getString("schema_type");
             String[] distCipRecents = (String[]) resultSet.getArray("DIST_CIP_RECENT").getArray();
             long[] clientIpTs = new long[distCipRecents.length];
-            for (int i = 0;i < clientIpTs.length;i++){
+            for (int i = 0; i < clientIpTs.length; i++) {
                 clientIpTs[i] = currentHour;
             }
 
@@ -115,10 +132,10 @@ public class ReadClickhouseData {
             newDoc.setTo("IP/" + vIp);
             newDoc.addAttribute("FIRST_FOUND_TIME", firstFoundTime);
             newDoc.addAttribute("LAST_FOUND_TIME", lastFoundTime);
-            newDoc.addAttribute("COUNT_TOTAL", countTotal);
             newDoc.addAttribute("DIST_CIP", distCipRecents);
-            newDoc.addAttribute("DIST_CIP_TS",clientIpTs);
-
+            newDoc.addAttribute("DIST_CIP_TS", clientIpTs);
+            newDoc.addAttribute("PROTOCOL_TYPE", schemaType);
+            checkSchemaProperty(newDoc, schemaType, countTotal);
         }
         return newDoc;
     }
@@ -132,6 +149,7 @@ public class ReadClickhouseData {
             long firstFoundTime = resultSet.getLong("FIRST_FOUND_TIME");
             long lastFoundTime = resultSet.getLong("LAST_FOUND_TIME");
             long countTotal = resultSet.getLong("COUNT_TOTAL");
+            String schemaType = resultSet.getString("schema_type");
 
             newDoc = new BaseEdgeDocument();
             newDoc.setKey(key);
@@ -139,20 +157,20 @@ public class ReadClickhouseData {
             newDoc.setTo("FQDN/" + vFqdn);
             newDoc.addAttribute("FIRST_FOUND_TIME", firstFoundTime);
             newDoc.addAttribute("LAST_FOUND_TIME", lastFoundTime);
-            newDoc.addAttribute("COUNT_TOTAL", countTotal);
+            newDoc.addAttribute("PROTOCOL_TYPE", schemaType);
+            checkSchemaProperty(newDoc, schemaType, countTotal);
         }
         return newDoc;
     }
 
-    public static void putMapByHashcode(BaseEdgeDocument newDoc, HashMap<Integer, HashMap<String, HashMap<String, BaseEdgeDocument>>> map, String schema) throws SQLException {
+    public static <T extends BaseDocument> void putMapByHashcode(T newDoc, HashMap<Integer, HashMap<String, ArrayList<T>>> map) {
         if (newDoc != null) {
             String key = newDoc.getKey();
             int i = Math.abs(key.hashCode()) % ApplicationConfig.THREAD_POOL_NUMBER;
-            HashMap<String, HashMap<String, BaseEdgeDocument>> documentHashMap = map.getOrDefault(i, new HashMap());
-
-            HashMap<String, BaseEdgeDocument> schemaHashMap = documentHashMap.getOrDefault(key, new HashMap<>());
-            schemaHashMap.put(schema, newDoc);
-            documentHashMap.put(key, schemaHashMap);
+            HashMap<String, ArrayList<T>> documentHashMap = map.getOrDefault(i, new HashMap<>());
+            ArrayList<T> documentArrayList = documentHashMap.getOrDefault(key, new ArrayList<>());
+            documentArrayList.add(newDoc);
+            documentHashMap.put(key, documentArrayList);
         }
     }
 
@@ -179,7 +197,23 @@ public class ReadClickhouseData {
         return false;
     }
 
-    public static String getVFqdnSql() {
+    private static void checkSchemaProperty(BaseEdgeDocument newDoc, String schema, long countTotal) {
+        long[] recentCnt = new long[24];
+        recentCnt[0] = countTotal;
+        for (String protocol:protocolSet){
+            String protocolRecent = protocol +"_CNT_RECENT";
+            String protocolTotal  = protocol + "_CNT_TOTAL";
+            if (protocol.equals(schema)){
+                newDoc.addAttribute(protocolTotal, countTotal);
+                newDoc.addAttribute(protocolRecent, recentCnt);
+            }else {
+                newDoc.addAttribute(protocolTotal, 0L);
+                newDoc.addAttribute(protocolRecent, new long[24]);
+            }
+        }
+    }
+
+    public static String getVertexFqdnSql() {
         long[] timeLimit = getTimeLimit();
         long maxTime = timeLimit[0];
         long minTime = timeLimit[1];
@@ -189,7 +223,7 @@ public class ReadClickhouseData {
         return "SELECT FQDN,MAX( LAST_FOUND_TIME ) AS LAST_FOUND_TIME,MIN( FIRST_FOUND_TIME ) AS FIRST_FOUND_TIME FROM ((" + sslSql + ") UNION ALL (" + httpSql + ")) GROUP BY FQDN HAVING FQDN != ''";
     }
 
-    public static String getVIpSql() {
+    public static String getVertexIpSql() {
         long[] timeLimit = getTimeLimit();
         long maxTime = timeLimit[0];
         long minTime = timeLimit[1];
@@ -199,23 +233,23 @@ public class ReadClickhouseData {
         return "SELECT * FROM((" + clientIpSql + ") UNION ALL (" + serverIpSql + "))";
     }
 
-    public static String getEFqdnAddressIpSql() {
+    public static String getRelationshipFqdnAddressIpSql() {
         long[] timeLimit = getTimeLimit();
         long maxTime = timeLimit[0];
         long minTime = timeLimit[1];
         String where = " common_recv_time >= " + minTime + " AND common_recv_time < " + maxTime;
-        String sslSql = "SELECT ssl_sni AS FQDN,common_server_ip,MAX(common_recv_time) AS LAST_FOUND_TIME,MIN(common_recv_time) AS FIRST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL,groupUniqArray(100)(common_client_ip) AS DIST_CIP_RECENT,'SSL' AS  common_schema_type FROM tsg_galaxy_v3.connection_record_log WHERE " + where + " and common_schema_type = 'SSL' GROUP BY ssl_sni,common_server_ip";
-        String httpSql = "SELECT http_host AS FQDN,common_server_ip,MAX(common_recv_time) AS LAST_FOUND_TIME,MIN(common_recv_time) AS FIRST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL,groupUniqArray(100)(common_client_ip) AS DIST_CIP_RECENT,'HTTP' AS common_schema_type FROM tsg_galaxy_v3.connection_record_log WHERE " + where + " and common_schema_type = 'HTTP' GROUP BY http_host,common_server_ip";
+        String sslSql = "SELECT ssl_sni AS FQDN,common_server_ip,MAX(common_recv_time) AS LAST_FOUND_TIME,MIN(common_recv_time) AS FIRST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL,groupUniqArray(10000)(common_client_ip) AS DIST_CIP_RECENT,'TLS' AS  schema_type FROM tsg_galaxy_v3.connection_record_log WHERE " + where + " and common_schema_type = 'SSL' GROUP BY ssl_sni,common_server_ip";
+        String httpSql = "SELECT http_host AS FQDN,common_server_ip,MAX(common_recv_time) AS LAST_FOUND_TIME,MIN(common_recv_time) AS FIRST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL,groupUniqArray(10000)(common_client_ip) AS DIST_CIP_RECENT,'HTTP' AS schema_type FROM tsg_galaxy_v3.connection_record_log WHERE " + where + " and common_schema_type = 'HTTP' GROUP BY http_host,common_server_ip";
         return "SELECT * FROM ((" + sslSql + ") UNION ALL (" + httpSql + "))WHERE FQDN != ''";
     }
 
-    public static String getEIpVisitFqdnSql() {
+    public static String getRelationshipIpVisitFqdnSql() {
         long[] timeLimit = getTimeLimit();
         long maxTime = timeLimit[0];
         long minTime = timeLimit[1];
         String where = " common_recv_time >= " + minTime + " AND common_recv_time < " + maxTime;
-        String httpSql = "SELECT http_host AS FQDN,common_client_ip,MAX(common_recv_time) AS LAST_FOUND_TIME,MIN(common_recv_time) AS FIRST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL,'HTTP' AS common_schema_type FROM tsg_galaxy_v3.connection_record_log WHERE " + where + " and common_schema_type = 'HTTP' GROUP BY http_host,common_client_ip";
-        String sslSql = "SELECT ssl_sni AS FQDN,common_client_ip,MAX(common_recv_time) AS LAST_FOUND_TIME,MIN(common_recv_time) AS FIRST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL,'SSL' AS common_schema_type FROM tsg_galaxy_v3.connection_record_log WHERE common_schema_type = 'SSL' GROUP BY ssl_sni,common_client_ip";
+        String httpSql = "SELECT http_host AS FQDN,common_client_ip,MAX(common_recv_time) AS LAST_FOUND_TIME,MIN(common_recv_time) AS FIRST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL,'HTTP' AS schema_type FROM tsg_galaxy_v3.connection_record_log WHERE " + where + " and common_schema_type = 'HTTP' GROUP BY http_host,common_client_ip";
+        String sslSql = "SELECT ssl_sni AS FQDN,common_client_ip,MAX(common_recv_time) AS LAST_FOUND_TIME,MIN(common_recv_time) AS FIRST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL,'TLS' AS schema_type FROM tsg_galaxy_v3.connection_record_log WHERE common_schema_type = 'SSL' GROUP BY ssl_sni,common_client_ip";
         return "SELECT * FROM ((" + sslSql + ") UNION ALL (" + httpSql + "))WHERE FQDN != ''";
     }
 

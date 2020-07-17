@@ -10,8 +10,6 @@ import com.arangodb.entity.BaseEdgeDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -20,25 +18,25 @@ import java.util.concurrent.ConcurrentHashMap;
 public class BaseArangoData {
     private static final Logger LOG = LoggerFactory.getLogger(BaseArangoData.class);
 
-    static ConcurrentHashMap<String, BaseEdgeDocument> v_Fqdn_Map = new ConcurrentHashMap<>();
-    static ConcurrentHashMap<String, BaseEdgeDocument> v_Ip_Map = new ConcurrentHashMap<>();
-    static ConcurrentHashMap<String, BaseEdgeDocument> v_Subscriber_Map = new ConcurrentHashMap<>();
+    static ConcurrentHashMap<String, BaseDocument> v_Fqdn_Map = new ConcurrentHashMap<>();
+    static ConcurrentHashMap<String, BaseDocument> v_Ip_Map = new ConcurrentHashMap<>();
+    static ConcurrentHashMap<String, BaseDocument> v_Subscriber_Map = new ConcurrentHashMap<>();
     static ConcurrentHashMap<String, BaseEdgeDocument> e_Fqdn_Address_Ip_Map = new ConcurrentHashMap<>();
     static ConcurrentHashMap<String, BaseEdgeDocument> e_Ip_Visit_Fqdn_Map = new ConcurrentHashMap<>();
     static ConcurrentHashMap<String, BaseEdgeDocument> e_Subsciber_Locate_Ip_Map = new ConcurrentHashMap<>();
 
-    private static final ArangoDBConnect arangoDBConnect = ArangoDBConnect.getInstance();
+    private static ArangoDBConnect arangoDBConnect = ArangoDBConnect.getInstance();
 
-    private static final ExecutorThreadPool threadPool = ExecutorThreadPool.getInstance();
+    private static ExecutorThreadPool threadPool = ExecutorThreadPool.getInstance();
 
     public void baseDocumentDataMap(){
         long startA = System.currentTimeMillis();
-        readHistoryData("FQDN", v_Fqdn_Map);
-        readHistoryData("IP", v_Ip_Map);
-        readHistoryData("SUBSCRIBER",v_Subscriber_Map);
-        readHistoryData("R_LOCATE_FQDN2IP", e_Fqdn_Address_Ip_Map);
-//        readHistoryData("R_VISIT_IP2FQDN", e_Ip_Visit_Fqdn_Map);
-        readHistoryData("R_LOCATE_SUBSCRIBER2IP",e_Subsciber_Locate_Ip_Map);
+        readHistoryData("FQDN", v_Fqdn_Map,BaseDocument.class);
+        readHistoryData("IP", v_Ip_Map,BaseDocument.class);
+        readHistoryData("SUBSCRIBER",v_Subscriber_Map,BaseDocument.class);
+        readHistoryData("R_LOCATE_FQDN2IP", e_Fqdn_Address_Ip_Map,BaseEdgeDocument.class);
+//        readHistoryData("R_VISIT_IP2FQDN", e_Ip_Visit_Fqdn_Map,BaseEdgeDocument.class);
+        readHistoryData("R_LOCATE_SUBSCRIBER2IP",e_Subsciber_Locate_Ip_Map,BaseEdgeDocument.class);
         threadPool.shutdown();
         threadPool.awaitThreadTask();
         LOG.info("v_Fqdn_Map大小："+v_Fqdn_Map.size());
@@ -51,29 +49,12 @@ public class BaseArangoData {
         LOG.info("读取ArangoDb时间："+(lastA - startA));
     }
 
-    public static void main(String[] args) {
-        new BaseArangoData().readHistoryData("IP", v_Ip_Map);
-        threadPool.shutdown();
-        threadPool.awaitThreadTask();
-        ArrayList<BaseEdgeDocument> baseEdgeDocuments = new ArrayList<>();
-        Enumeration<String> keys = v_Ip_Map.keys();
-        while (keys.hasMoreElements()){
-            String key = keys.nextElement();
-            BaseEdgeDocument baseEdgeDocument = v_Ip_Map.get(key);
-            baseEdgeDocument.addAttribute("COMMON_LINK_INFO","");
-            baseEdgeDocuments.add(baseEdgeDocument);
-        }
-        arangoDBConnect.overwrite(baseEdgeDocuments,"IP");
-        arangoDBConnect.clean();
-
-    }
-
-    private void readHistoryData(String table, ConcurrentHashMap<String, BaseEdgeDocument> map){
+    private <T extends BaseDocument> void readHistoryData(String collectionName, ConcurrentHashMap<String, T> map, Class<T> type){
         try {
-            long[] timeRange = getTimeRange(table);
+            long[] timeRange = getTimeRange(collectionName);
             for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
-                String sql = getQuerySql(timeRange, i, table);
-                ReadHistoryArangoData readHistoryArangoData = new ReadHistoryArangoData(arangoDBConnect, sql, map);
+                String sql = getQuerySql(timeRange, i, collectionName);
+                ReadHistoryArangoData<T> readHistoryArangoData = new ReadHistoryArangoData<>(arangoDBConnect, sql, map,type,collectionName);
                 threadPool.executor(readHistoryArangoData);
             }
         }catch (Exception e){

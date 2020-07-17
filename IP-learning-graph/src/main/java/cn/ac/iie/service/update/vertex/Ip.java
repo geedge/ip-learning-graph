@@ -1,9 +1,8 @@
-package cn.ac.iie.service.vertex;
+package cn.ac.iie.service.update.vertex;
 
 import cn.ac.iie.service.update.Vertex;
 import cn.ac.iie.utils.ArangoDBConnect;
 import com.arangodb.entity.BaseDocument;
-import com.arangodb.entity.BaseEdgeDocument;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,9 +15,15 @@ public class Ip extends Vertex {
     public Ip(HashMap<String, ArrayList<BaseDocument>> newDocumentHashMap,
               ArangoDBConnect arangoManger,
               String collectionName,
-              ConcurrentHashMap<String, BaseEdgeDocument> historyDocumentMap,
+              ConcurrentHashMap<String, BaseDocument> historyDocumentMap,
               CountDownLatch countDownLatch) {
         super(newDocumentHashMap, arangoManger, collectionName, historyDocumentMap,countDownLatch);
+    }
+
+    @Override
+    protected void updateFunction(BaseDocument newDocument, BaseDocument historyDocument) {
+        super.updateFunction(newDocument, historyDocument);
+        updateIpByType(newDocument, historyDocument);
     }
 
     @Override
@@ -40,20 +45,14 @@ public class Ip extends Vertex {
             if (!properties.containsKey(property)){
                 properties.put(property,0L);
                 checkIpTypeProperty(properties,mergeProperties,property);
-            }else if (properties.get(property).toString().equals("0") && mergeProperties.containsKey(property)){
-                if (!mergeProperties.get(property).toString().equals("0")){
+            }else if ("0".equals(properties.get(property).toString()) && mergeProperties.containsKey(property)){
+                if (!"0".equals(mergeProperties.get(property).toString())){
                     properties.put(property,Long.parseLong(mergeProperties.get(property).toString()));
                 }
             }
         }catch (Exception e){
             e.printStackTrace();
         }
-    }
-
-    @Override
-    protected void updateFunction(BaseDocument newDocument, BaseDocument historyDocument) {
-        super.updateFunction(newDocument, historyDocument);
-        updateIpByType(newDocument, historyDocument);
     }
 
     private void updateIpByType(BaseDocument newDocument, BaseDocument historyDocument){

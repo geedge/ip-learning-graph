@@ -1,12 +1,8 @@
 package cn.ac.iie.dao;
 
 import cn.ac.iie.config.ApplicationConfig;
-import cn.ac.iie.service.relationship.LocateFqdn2Ip;
-import cn.ac.iie.service.relationship.LocateSubscriber2Ip;
-import cn.ac.iie.service.relationship.VisitIp2Fqdn;
-import cn.ac.iie.service.vertex.Fqdn;
-import cn.ac.iie.service.vertex.Ip;
-import cn.ac.iie.service.vertex.Subscriber;
+import cn.ac.iie.service.update.vertex.*;
+import cn.ac.iie.service.update.relationship.*;
 import cn.ac.iie.utils.ArangoDBConnect;
 import cn.ac.iie.utils.ExecutorThreadPool;
 import com.arangodb.entity.BaseDocument;
@@ -26,28 +22,17 @@ public class UpdateGraphData {
     private static ExecutorThreadPool pool = ExecutorThreadPool.getInstance();
     private static ArangoDBConnect arangoManger = ArangoDBConnect.getInstance();
 
+    private static BaseClickhouseData baseClickhouseData = new BaseClickhouseData();
     private CountDownLatch countDownLatch;
 
     public void updateArango(){
         long startC = System.currentTimeMillis();
         try {
-            BaseClickhouseData baseClickhouseData = new BaseClickhouseData();
-            baseClickhouseData.BaseVFqdn();
             updateVertexFqdn();
-
-            baseClickhouseData.BaseVIp();
             updateVertexIp();
-
-            baseClickhouseData.BaseEFqdnAddressIp();
             updateRelationFqdnAddressIp();
-
-//            baseClickhouseData.BaseEIpVisitFqdn();
 //            updateRelationIpVisitFqdn();
-
-            baseClickhouseData.BaseVertexSubscriber();
             updateVertexSubscriber();
-
-            baseClickhouseData.BaseRelationshipSubscriberLocateIp();
             updateRelationshipSubsciberLocateIp();
         }catch (Exception e){
             e.printStackTrace();
@@ -59,13 +44,14 @@ public class UpdateGraphData {
     }
 
     private void updateVertexFqdn(){
+        baseClickhouseData.baseVertexFqdn();
         try {
             countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER);
             for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
                 HashMap<String, ArrayList<BaseDocument>> stringArrayListHashMap = BaseClickhouseData.vFqdnMap.get(i);
                 LOG.info("vFqdn baseDocumentHashMap大小：" + stringArrayListHashMap.size());
-                Fqdn updateVFqdn = new Fqdn(stringArrayListHashMap, arangoManger, "FQDN", BaseArangoData.v_Fqdn_Map,countDownLatch);
-                updateVFqdn.run();
+                Fqdn updateFqdn = new Fqdn(stringArrayListHashMap, arangoManger, "FQDN", BaseArangoData.v_Fqdn_Map,countDownLatch);
+                updateFqdn.run();
             }
             countDownLatch.await();
             LOG.info("---------FQDN vertex 更新完毕---------");
@@ -75,13 +61,14 @@ public class UpdateGraphData {
     }
 
     private void updateVertexSubscriber(){
+        baseClickhouseData.baseVertexSubscriber();
         try {
             countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER);
             for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
                 HashMap<String, ArrayList<BaseDocument>> stringArrayListHashMap = BaseClickhouseData.vSubscriberMap.get(i);
                 LOG.info("vSubscriber baseDocumentHashMap大小：" + stringArrayListHashMap.size());
-                Subscriber updateVSubscriber = new Subscriber(stringArrayListHashMap, arangoManger, "SUBSCRIBER", BaseArangoData.v_Subscriber_Map,countDownLatch);
-                updateVSubscriber.run();
+                Subscriber updateSubscriber = new Subscriber(stringArrayListHashMap, arangoManger, "SUBSCRIBER", BaseArangoData.v_Subscriber_Map,countDownLatch);
+                updateSubscriber.run();
             }
             countDownLatch.await();
             LOG.info("---------SUBSCRIBER vertex 更新完毕---------");
@@ -91,13 +78,14 @@ public class UpdateGraphData {
     }
 
     private void updateRelationshipSubsciberLocateIp(){
+        baseClickhouseData.baseRelationshipSubscriberLocateIp();
         try {
             countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER);
             for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
-                HashMap<String, HashMap<String, BaseEdgeDocument>> baseDocumentHashMap = BaseClickhouseData.eSubsciberLocateIpMap.get(i);
+                HashMap<String, ArrayList<BaseEdgeDocument>> baseDocumentHashMap = BaseClickhouseData.eSubsciberLocateIpMap.get(i);
                 LOG.info("ESubsciberLocateIp baseDocumentHashMap大小：" + baseDocumentHashMap.size());
-                LocateSubscriber2Ip rLocateSubscriber2IP = new LocateSubscriber2Ip(baseDocumentHashMap, arangoManger, "R_LOCATE_SUBSCRIBER2IP", BaseArangoData.e_Subsciber_Locate_Ip_Map, countDownLatch);
-                rLocateSubscriber2IP.run();
+                LocateSubscriber2Ip locateSubscriber2Ip = new LocateSubscriber2Ip(baseDocumentHashMap, arangoManger, "R_LOCATE_SUBSCRIBER2IP", BaseArangoData.e_Subsciber_Locate_Ip_Map, countDownLatch);
+                locateSubscriber2Ip.run();
             }
             countDownLatch.await();
             LOG.info("------------R_LOCATE_SUBSCRIBER2IP relationship 更新完毕----------------");
@@ -107,13 +95,14 @@ public class UpdateGraphData {
     }
 
     private void updateVertexIp(){
+        baseClickhouseData.baseVertexIp();
         try {
             countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER);
             for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
                 HashMap<String, ArrayList<BaseDocument>> stringArrayListHashMap = BaseClickhouseData.vIpMap.get(i);
                 LOG.info("vIp baseDocumentHashMap大小：" + stringArrayListHashMap.size());
-                Ip updateVIp = new Ip(stringArrayListHashMap, arangoManger, "IP", BaseArangoData.v_Ip_Map, countDownLatch);
-                updateVIp.run();
+                Ip updateIp = new Ip(stringArrayListHashMap, arangoManger, "IP", BaseArangoData.v_Ip_Map, countDownLatch);
+                updateIp.run();
             }
             countDownLatch.await();
             LOG.info("----------IP vertex 更新完毕-------------");
@@ -123,13 +112,14 @@ public class UpdateGraphData {
     }
 
     private void updateRelationFqdnAddressIp(){
+        baseClickhouseData.baseRelationshipFqdnAddressIp();
         try {
             countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER);
             for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
-                HashMap<String, HashMap<String, BaseEdgeDocument>> baseDocumentHashMap = BaseClickhouseData.eFqdnAddressIpMap.get(i);
+                HashMap<String, ArrayList<BaseEdgeDocument>> baseDocumentHashMap = BaseClickhouseData.eFqdnAddressIpMap.get(i);
                 LOG.info("EFqdnAddressIp baseDocumentHashMap大小：" + baseDocumentHashMap.size());
-                LocateFqdn2Ip updateEFqdnAddressIp = new LocateFqdn2Ip(baseDocumentHashMap, arangoManger, "R_LOCATE_FQDN2IP", BaseArangoData.e_Fqdn_Address_Ip_Map, countDownLatch);
-                updateEFqdnAddressIp.run();
+                LocateFqdn2Ip fqdnAddressIp = new LocateFqdn2Ip(baseDocumentHashMap, arangoManger, "R_LOCATE_FQDN2IP", BaseArangoData.e_Fqdn_Address_Ip_Map, countDownLatch);
+                fqdnAddressIp.run();
             }
             countDownLatch.await();
             LOG.info("------------R_LOCATE_FQDN2IP relationship 更新完毕----------------");
@@ -139,13 +129,14 @@ public class UpdateGraphData {
     }
 
     private void updateRelationIpVisitFqdn(){
+        baseClickhouseData.baseRelationshipIpVisitFqdn();
         try {
             countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER);
             for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
-                HashMap<String, HashMap<String, BaseEdgeDocument>> baseDocumentHashMap = BaseClickhouseData.eIpVisitFqdnMap.get(i);
+                HashMap<String, ArrayList<BaseEdgeDocument>> baseDocumentHashMap = BaseClickhouseData.eIpVisitFqdnMap.get(i);
                 LOG.info("EIpVisitFqdn baseDocumentHashMap大小：" + baseDocumentHashMap.size());
-                VisitIp2Fqdn updateEIpVisitFqdn = new VisitIp2Fqdn(baseDocumentHashMap,arangoManger,"R_VISIT_IP2FQDN",BaseArangoData.e_Ip_Visit_Fqdn_Map,countDownLatch);
-                updateEIpVisitFqdn.run();
+                VisitIp2Fqdn ipVisitFqdn = new VisitIp2Fqdn(baseDocumentHashMap,arangoManger,"R_VISIT_IP2FQDN", BaseArangoData.e_Ip_Visit_Fqdn_Map,countDownLatch);
+                ipVisitFqdn.run();
             }
             countDownLatch.await();
             LOG.info("---------------R_VISIT_IP2FQDN ralationship 更新完毕----------------");
