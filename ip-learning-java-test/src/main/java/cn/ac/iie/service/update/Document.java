@@ -89,29 +89,29 @@ public class Document<T extends BaseDocument> extends Thread{
         }else if (newDocumentSchemaList.size() == 1){
             return newDocumentSchemaList.get(0);
         }else {
-            T document = type.newInstance();
-            Map<String, Object> properties = document.getProperties();
+            T newDocument = type.newInstance();
+            Map<String, Object> newProperties = newDocument.getProperties();
             for (T doc:newDocumentSchemaList){
-                if (properties.isEmpty()){
-                    document = doc;
-                    properties = doc.getProperties();
+                if (newProperties.isEmpty()){
+                    newDocument = doc;
+                    newProperties = doc.getProperties();
                 }else {
-                    mergeFunction(properties,doc);
+                    mergeFunction(newProperties,doc);
                 }
             }
-            document.setProperties(properties);
-            return document;
+            newDocument.setProperties(newProperties);
+            return newDocument;
         }
     }
 
-    protected void mergeFunction(Map<String, Object> properties, T doc) {
-        long firstFoundTime = Long.parseLong(properties.getOrDefault("FIRST_FOUND_TIME", 0L).toString());
-        long docFirstFoundTime = Long.parseLong(doc.getAttribute("FIRST_FOUND_TIME").toString());
-        properties.put("FIRST_FOUND_TIME",firstFoundTime<docFirstFoundTime? firstFoundTime:docFirstFoundTime);
+    protected void mergeFunction(Map<String, Object> newProperties, T lastDoc) {
+        long firstFoundTime = Long.parseLong(newProperties.getOrDefault("FIRST_FOUND_TIME", 0L).toString());
+        long docFirstFoundTime = Long.parseLong(lastDoc.getAttribute("FIRST_FOUND_TIME").toString());
+        newProperties.put("FIRST_FOUND_TIME",firstFoundTime<docFirstFoundTime? firstFoundTime:docFirstFoundTime);
 
-        long lastFoundTime = Long.parseLong(properties.getOrDefault("LAST_FOUND_TIME", 0L).toString());
-        long docLastFoundTime = Long.parseLong(doc.getAttribute("LAST_FOUND_TIME").toString());
-        properties.put("LAST_FOUND_TIME",lastFoundTime>docLastFoundTime? lastFoundTime:docLastFoundTime);
+        long lastFoundTime = Long.parseLong(newProperties.getOrDefault("LAST_FOUND_TIME", 0L).toString());
+        long docLastFoundTime = Long.parseLong(lastDoc.getAttribute("LAST_FOUND_TIME").toString());
+        newProperties.put("LAST_FOUND_TIME",lastFoundTime>docLastFoundTime? lastFoundTime:docLastFoundTime);
     }
 
 

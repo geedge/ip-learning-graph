@@ -22,11 +22,15 @@ public class LocateFqdn2Ip extends Relationship {
     @Override
     protected void mergeFunction(Map<String, Object> properties, BaseEdgeDocument schemaEdgeDoc){
         super.mergeFunction(properties,schemaEdgeDoc);
+        mergeProtocol(properties, schemaEdgeDoc);
     }
 
     @Override
     protected void updateFunction(BaseEdgeDocument newEdgeDocument, BaseEdgeDocument historyEdgeDocument) {
         super.updateFunction(newEdgeDocument, historyEdgeDocument);
+        updateProcotol(historyEdgeDocument,"TLS",newEdgeDocument);
+        updateProcotol(historyEdgeDocument,"HTTP",newEdgeDocument);
+        updateProcotol(historyEdgeDocument,"DNS",newEdgeDocument);
         updateDistinctClientIp(newEdgeDocument, historyEdgeDocument);
     }
 

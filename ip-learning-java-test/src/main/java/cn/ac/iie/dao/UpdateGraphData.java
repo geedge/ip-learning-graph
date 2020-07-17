@@ -26,29 +26,18 @@ public class UpdateGraphData {
     private static ExecutorThreadPool pool = ExecutorThreadPool.getInstance();
     private static ArangoDBConnect arangoManger = ArangoDBConnect.getInstance();
 
+    private static BaseClickhouseData baseClickhouseData = new BaseClickhouseData();
     private CountDownLatch countDownLatch;
 
     public void updateArango(){
         long startC = System.currentTimeMillis();
         try {
-            BaseClickhouseData baseClickhouseData = new BaseClickhouseData();
-            baseClickhouseData.baseVertexFqdn();
             updateVertexFqdn();
-
-            baseClickhouseData.baseVertexIp();
             updateVertexIp();
-
-//            baseClickhouseData.baseRelationshipFqdnAddressIp();
-//            updateRelationFqdnAddressIp();
-
-//            baseClickhouseData.baseRelationshipIpVisitFqdn();
-//            updateRelationIpVisitFqdn();
-
-            baseClickhouseData.baseVertexSubscriber();
+            updateRelationFqdnAddressIp();
+            updateRelationIpVisitFqdn();
             updateVertexSubscriber();
-
-//            baseClickhouseData.baseRelationshipSubscriberLocateIp();
-//            updateRelationshipSubsciberLocateIp();
+            updateRelationshipSubsciberLocateIp();
         }catch (Exception e){
             e.printStackTrace();
         }finally {
@@ -59,6 +48,7 @@ public class UpdateGraphData {
     }
 
     private void updateVertexFqdn(){
+        baseClickhouseData.baseVertexFqdn();
         try {
             countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER);
             for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
@@ -75,6 +65,7 @@ public class UpdateGraphData {
     }
 
     private void updateVertexSubscriber(){
+        baseClickhouseData.baseVertexSubscriber();
         try {
             countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER);
             for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
@@ -91,6 +82,7 @@ public class UpdateGraphData {
     }
 
     private void updateRelationshipSubsciberLocateIp(){
+        baseClickhouseData.baseRelationshipSubscriberLocateIp();
         try {
             countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER);
             for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
@@ -107,6 +99,7 @@ public class UpdateGraphData {
     }
 
     private void updateVertexIp(){
+        baseClickhouseData.baseVertexIp();
         try {
             countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER);
             for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
@@ -123,6 +116,7 @@ public class UpdateGraphData {
     }
 
     private void updateRelationFqdnAddressIp(){
+        baseClickhouseData.baseRelationshipFqdnAddressIp();
         try {
             countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER);
             for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
@@ -139,6 +133,7 @@ public class UpdateGraphData {
     }
 
     private void updateRelationIpVisitFqdn(){
+        baseClickhouseData.baseRelationshipIpVisitFqdn();
         try {
             countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER);
             for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
