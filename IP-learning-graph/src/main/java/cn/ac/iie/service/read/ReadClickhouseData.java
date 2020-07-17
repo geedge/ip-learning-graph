@@ -59,6 +59,7 @@ public class ReadClickhouseData {
                 newDoc.addAttribute("CLIENT_BYTES_SUM",0L);
                 break;
         }
+        newDoc.addAttribute("COMMON_LINK_INFO","");
         return newDoc;
     }
 

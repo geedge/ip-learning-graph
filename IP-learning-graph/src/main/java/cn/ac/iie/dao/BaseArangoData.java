@@ -10,6 +10,8 @@ import com.arangodb.entity.BaseEdgeDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -47,6 +49,23 @@ public class BaseArangoData {
         LOG.info("e_Subsciber_Locate_Ip_Map大小："+e_Subsciber_Locate_Ip_Map.size());
         long lastA = System.currentTimeMillis();
         LOG.info("读取ArangoDb时间："+(lastA - startA));
+    }
+
+    public static void main(String[] args) {
+        new BaseArangoData().readHistoryData("IP", v_Ip_Map);
+        threadPool.shutdown();
+        threadPool.awaitThreadTask();
+        ArrayList<BaseEdgeDocument> baseEdgeDocuments = new ArrayList<>();
+        Enumeration<String> keys = v_Ip_Map.keys();
+        while (keys.hasMoreElements()){
+            String key = keys.nextElement();
+            BaseEdgeDocument baseEdgeDocument = v_Ip_Map.get(key);
+            baseEdgeDocument.addAttribute("COMMON_LINK_INFO","");
+            baseEdgeDocuments.add(baseEdgeDocument);
+        }
+        arangoDBConnect.overwrite(baseEdgeDocuments,"IP");
+        arangoDBConnect.clean();
+
     }
 
     private void readHistoryData(String table, ConcurrentHashMap<String, BaseEdgeDocument> map){

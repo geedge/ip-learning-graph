@@ -39,7 +39,7 @@ public class ReadHistoryArangoData extends Thread {
                 i++;
             }
             long l = System.currentTimeMillis();
-            LOG.info(query+ "\n处理IP数据" + i + "条，运行时间：" + (l - s));
+            LOG.info(query+ "\n处理数据" + i + "条，运行时间：" + (l - s));
         }
     }
 }
