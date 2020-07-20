@@ -1,6 +1,6 @@
 package cn.ac.iie.service.update.relationship;
 
-import cn.ac.iie.service.read.ReadClickhouseData;
+import cn.ac.iie.service.ingestion.ReadClickhouseData;
 import cn.ac.iie.service.update.Relationship;
 import cn.ac.iie.utils.ArangoDBConnect;
 import com.arangodb.entity.BaseEdgeDocument;

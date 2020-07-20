@@ -1,7 +1,7 @@
 package cn.ac.iie.dao;
 
 import cn.ac.iie.config.ApplicationConfig;
-import cn.ac.iie.service.read.ReadHistoryArangoData;
+import cn.ac.iie.service.ingestion.ReadHistoryArangoData;
 import cn.ac.iie.utils.ArangoDBConnect;
 import cn.ac.iie.utils.ExecutorThreadPool;
 import com.arangodb.ArangoCursor;
@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * 获取arangoDB历史数据
@@ -18,45 +19,31 @@ import java.util.concurrent.ConcurrentHashMap;
 public class BaseArangoData {
     private static final Logger LOG = LoggerFactory.getLogger(BaseArangoData.class);
 
-    static ConcurrentHashMap<String, BaseDocument> v_Fqdn_Map = new ConcurrentHashMap<>();
-    static ConcurrentHashMap<String, BaseDocument> v_Ip_Map = new ConcurrentHashMap<>();
-    static ConcurrentHashMap<String, BaseDocument> v_Subscriber_Map = new ConcurrentHashMap<>();
-    static ConcurrentHashMap<String, BaseEdgeDocument> e_Fqdn_Address_Ip_Map = new ConcurrentHashMap<>();
-    static ConcurrentHashMap<String, BaseEdgeDocument> e_Ip_Visit_Fqdn_Map = new ConcurrentHashMap<>();
-    static ConcurrentHashMap<String, BaseEdgeDocument> e_Subsciber_Locate_Ip_Map = new ConcurrentHashMap<>();
+    public static ConcurrentHashMap<String, BaseDocument> historyVertexFqdnMap = new ConcurrentHashMap<>();
+    public static ConcurrentHashMap<String, BaseDocument> historyVertexIpMap = new ConcurrentHashMap<>();
+    public static ConcurrentHashMap<String, BaseDocument> historyVertexSubscriberMap = new ConcurrentHashMap<>();
+    public static ConcurrentHashMap<String, BaseEdgeDocument> historyRelationFqdnAddressIpMap = new ConcurrentHashMap<>();
+    public static ConcurrentHashMap<String, BaseEdgeDocument> historyRelationIpVisitFqdnMap = new ConcurrentHashMap<>();
+    public static ConcurrentHashMap<String, BaseEdgeDocument> historyRelationSubsciberLocateIpMap = new ConcurrentHashMap<>();
 
     private static ArangoDBConnect arangoDBConnect = ArangoDBConnect.getInstance();
 
-    private static ExecutorThreadPool threadPool = ExecutorThreadPool.getInstance();
+    private ExecutorThreadPool threadPool = ExecutorThreadPool.getInstance();
 
-    public void baseDocumentDataMap(){
-        long startA = System.currentTimeMillis();
-        readHistoryData("FQDN", v_Fqdn_Map,BaseDocument.class);
-        readHistoryData("IP", v_Ip_Map,BaseDocument.class);
-        readHistoryData("SUBSCRIBER",v_Subscriber_Map,BaseDocument.class);
-        readHistoryData("R_LOCATE_FQDN2IP", e_Fqdn_Address_Ip_Map,BaseEdgeDocument.class);
-//        readHistoryData("R_VISIT_IP2FQDN", e_Ip_Visit_Fqdn_Map,BaseEdgeDocument.class);
-        readHistoryData("R_LOCATE_SUBSCRIBER2IP",e_Subsciber_Locate_Ip_Map,BaseEdgeDocument.class);
-        threadPool.shutdown();
-        threadPool.awaitThreadTask();
-        LOG.info("v_Fqdn_Map大小："+v_Fqdn_Map.size());
-        LOG.info("v_Ip_Map大小："+v_Ip_Map.size());
-        LOG.info("v_Subscriber_Map大小："+v_Subscriber_Map.size());
-        LOG.info("e_Fqdn_Address_Ip_Map大小："+e_Fqdn_Address_Ip_Map.size());
-        LOG.info("e_Ip_Visit_Fqdn_Map大小："+e_Ip_Visit_Fqdn_Map.size());
-        LOG.info("e_Subsciber_Locate_Ip_Map大小："+e_Subsciber_Locate_Ip_Map.size());
-        long lastA = System.currentTimeMillis();
-        LOG.info("读取ArangoDb时间："+(lastA - startA));
-    }
-
-    private <T extends BaseDocument> void readHistoryData(String collectionName, ConcurrentHashMap<String, T> map, Class<T> type){
+    <T extends BaseDocument> void readHistoryData(String table, ConcurrentHashMap<String, T> map, Class<T> type){
         try {
-            long[] timeRange = getTimeRange(collectionName);
+            long start = System.currentTimeMillis();
+            CountDownLatch countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER);
+            long[] timeRange = getTimeRange(table);
             for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
-                String sql = getQuerySql(timeRange, i, collectionName);
-                ReadHistoryArangoData<T> readHistoryArangoData = new ReadHistoryArangoData<>(arangoDBConnect, sql, map,type,collectionName);
+                String sql = getQuerySql(timeRange, i, table);
+                ReadHistoryArangoData<T> readHistoryArangoData = new ReadHistoryArangoData<>(arangoDBConnect, sql, map,type,table,countDownLatch);
                 threadPool.executor(readHistoryArangoData);
             }
+            countDownLatch.await();
+            long last = System.currentTimeMillis();
+            LOG.info("读取"+table+" arangoDB 共耗时："+(last-start));
+            LOG.info(table+" history Map大小为："+map.size());
         }catch (Exception e){
             e.printStackTrace();
         }

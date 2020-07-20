@@ -1,4 +1,4 @@
-package cn.ac.iie.service.read;
+package cn.ac.iie.service.ingestion;
 
 import cn.ac.iie.config.ApplicationConfig;
 import com.arangodb.entity.BaseDocument;
