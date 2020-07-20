@@ -39,6 +39,7 @@ public class Document<T extends BaseDocument> extends Thread{
 
     @Override
     public void run() {
+        LOG.info(collectionName+" new Map 大小："+newDocumentMap.size());
         Set<String> keySet = newDocumentMap.keySet();
         ArrayList<T> resultDocumentList = new ArrayList<>();
         int i = 0;

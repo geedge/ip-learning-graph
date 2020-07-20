@@ -33,7 +33,7 @@ public class UpdateVFqdn implements Runnable{
 
                 if (newDocument != null){
                     i += 1;
-                    BaseDocument document = BaseArangoData.v_Fqdn_Map.getOrDefault(key, null);
+                    BaseDocument document = BaseArangoData.historyVertexFqdnMap.getOrDefault(key, null);
                     if (document != null){
                         Object lastFoundTime = newDocument.getAttribute("LAST_FOUND_TIME");
                         long fqdnCountTotal = Long.parseLong(newDocument.getAttribute("FQDN_COUNT_TOTAL").toString());

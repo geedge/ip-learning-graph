@@ -20,10 +20,10 @@ public class ArangoDBConnect {
     private static ArangoDB arangoDB = null;
     private static ArangoDBConnect conn = null;
     static {
-        getArangoDB();
+        getArangoDatabase();
     }
 
-    private static void getArangoDB(){
+    private static void getArangoDatabase(){
         arangoDB = new ArangoDB.Builder()
                 .maxConnections(ApplicationConfig.THREAD_POOL_NUMBER)
                 .host(ApplicationConfig.ARANGODB_HOST, ApplicationConfig.ARANGODB_PORT)
@@ -39,7 +39,7 @@ public class ArangoDBConnect {
         return conn;
     }
 
-    public ArangoDatabase getDatabase(){
+    private ArangoDatabase getDatabase(){
         return arangoDB.db(ApplicationConfig.ARANGODB_DB_NAME);
     }
 

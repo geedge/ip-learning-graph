@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * @author wlh
@@ -22,38 +23,46 @@ public class ReadHistoryArangoData<T extends BaseDocument> extends Thread {
     private ConcurrentHashMap<String, T> map;
     private Class<T> type;
     private String table;
+    private CountDownLatch countDownLatch;
 
-    public ReadHistoryArangoData(ArangoDBConnect arangoConnect, String query, ConcurrentHashMap<String, T> map, Class<T> type, String table) {
+    public ReadHistoryArangoData(ArangoDBConnect arangoConnect, String query, ConcurrentHashMap<String, T> map, Class<T> type, String table,CountDownLatch countDownLatch) {
         this.arangoConnect = arangoConnect;
         this.query = query;
         this.map = map;
         this.type = type;
         this.table = table;
+        this.countDownLatch = countDownLatch;
     }
 
     @Override
     public void run() {
-        long s = System.currentTimeMillis();
-        ArangoCursor<T> docs = arangoConnect.executorQuery(query, type);
-        if (docs != null) {
-            List<T> baseDocuments = docs.asListRemaining();
-            int i = 0;
-            for (T doc : baseDocuments) {
-                String key = doc.getKey();
-                switch (table) {
-                    case "R_LOCATE_FQDN2IP":
-                        updateProtocolDocument(doc);
-                        break;
-                    case "R_VISIT_IP2FQDN":
-                        updateProtocolDocument(doc);
-                        break;
-                    default:
+        try {
+            long s = System.currentTimeMillis();
+            ArangoCursor<T> docs = arangoConnect.executorQuery(query, type);
+            if (docs != null) {
+                List<T> baseDocuments = docs.asListRemaining();
+                int i = 0;
+                for (T doc : baseDocuments) {
+                    String key = doc.getKey();
+                    switch (table) {
+                        case "R_LOCATE_FQDN2IP":
+                            updateProtocolDocument(doc);
+                            break;
+                        case "R_VISIT_IP2FQDN":
+                            updateProtocolDocument(doc);
+                            break;
+                        default:
+                    }
+                    map.put(key, doc);
+                    i++;
                 }
-                map.put(key, doc);
-                i++;
+                long l = System.currentTimeMillis();
+                LOG.info(query + "\n读取数据" + i + "条，运行时间：" + (l - s));
             }
-            long l = System.currentTimeMillis();
-            LOG.info(query + "\n处理数据" + i + "条，运行时间：" + (l - s));
+        }catch (Exception e){
+            e.printStackTrace();
+        }finally {
+            countDownLatch.countDown();
         }
     }
 

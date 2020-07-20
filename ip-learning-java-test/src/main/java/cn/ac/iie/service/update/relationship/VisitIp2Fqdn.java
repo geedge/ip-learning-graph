@@ -1,4 +1,4 @@
-package cn.ac.iie.service.relationship;
+package cn.ac.iie.service.update.relationship;
 
 import cn.ac.iie.service.update.Relationship;
 import cn.ac.iie.utils.ArangoDBConnect;

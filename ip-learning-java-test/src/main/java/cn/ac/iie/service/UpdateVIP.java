@@ -31,7 +31,7 @@ public class UpdateVIP implements Runnable {
                 BaseDocument newDocument = documentHashMap.getOrDefault(key, null);
                 if (newDocument != null){
                     i += 1;
-                    BaseDocument document = BaseArangoData.v_Ip_Map.getOrDefault(key, null);
+                    BaseDocument document = BaseArangoData.historyVertexIpMap.getOrDefault(key, null);
                     if (document != null){
                         Object lastFoundTime = newDocument.getAttribute("LAST_FOUND_TIME");
                         long ipCountTotal = Long.parseLong(newDocument.getAttribute("IP_COUNT_TOTAL").toString());

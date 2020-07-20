@@ -29,7 +29,7 @@ public class UpdateEFqdnAddressIp implements Runnable {
                 BaseEdgeDocument newEdgeDocument = documentHashMap.getOrDefault(key, null);
                 if (newEdgeDocument != null){
                     i += 1;
-                    BaseEdgeDocument edgeDocument = BaseArangoData.e_Fqdn_Address_Ip_Map.getOrDefault(key, null);
+                    BaseEdgeDocument edgeDocument = BaseArangoData.historyRelationFqdnAddressIpMap.getOrDefault(key, null);
                     if (edgeDocument != null){
                         Object lastFoundTime = newEdgeDocument.getAttribute("LAST_FOUND_TIME");
                         long countTotal = Long.parseLong(newEdgeDocument.getAttribute("COUNT_TOTAL").toString());
