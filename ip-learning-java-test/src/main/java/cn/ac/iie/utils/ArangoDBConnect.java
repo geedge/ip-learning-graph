@@ -11,12 +11,15 @@ import com.arangodb.entity.MultiDocumentEntity;
 import com.arangodb.model.AqlQueryOptions;
 import com.arangodb.model.DocumentCreateOptions;
 import com.arangodb.util.MapBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 
 public class ArangoDBConnect {
+    private static final Logger LOG = LoggerFactory.getLogger(ArangoDBConnect.class);
     private static ArangoDB arangoDB = null;
     private static ArangoDBConnect conn = null;
     static {
@@ -98,7 +101,7 @@ public class ArangoDBConnect {
                 MultiDocumentEntity<DocumentCreateEntity<T>> documentCreateEntityMultiDocumentEntity = collection.insertDocuments(docOverwrite, documentCreateOptions);
                 Collection<ErrorEntity> errors = documentCreateEntityMultiDocumentEntity.getErrors();
                 for (ErrorEntity errorEntity:errors){
-                    System.out.println("写入arangoDB异常："+errorEntity.getErrorMessage());
+                    LOG.debug("写入arangoDB异常："+errorEntity.getErrorMessage());
                 }
             }
         }catch (Exception e){

@@ -44,15 +44,6 @@ public class ReadHistoryArangoData<T extends BaseDocument> extends Thread {
                 int i = 0;
                 for (T doc : baseDocuments) {
                     String key = doc.getKey();
-                    switch (table) {
-                        case "R_LOCATE_FQDN2IP":
-                            updateProtocolDocument(doc);
-                            break;
-                        case "R_VISIT_IP2FQDN":
-                            updateProtocolDocument(doc);
-                            break;
-                        default:
-                    }
                     map.put(key, doc);
                     i++;
                 }
@@ -68,7 +59,7 @@ public class ReadHistoryArangoData<T extends BaseDocument> extends Thread {
 
     private void updateProtocolDocument(T doc) {
         if (doc.getProperties().containsKey("PROTOCOL_TYPE")) {
-            for (String protocol : ReadClickhouseData.protocolSet) {
+            for (String protocol : ReadClickhouseData.PROTOCOL_SET) {
                 String protocolRecent = protocol + "_CNT_RECENT";
                 ArrayList<Long> cntRecent = (ArrayList<Long>) doc.getAttribute(protocolRecent);
                 Long[] cntRecentsSrc = cntRecent.toArray(new Long[cntRecent.size()]);

@@ -120,37 +120,24 @@ public class TopDomainUtils {
     //通用方法,传入url,返回domain,这里的domain不包含端口号,含有:一定是v6
     public static String getDomainFromUrl(String oriUrl) {
         //先按照?切分,排除后续干扰
-        //后续操作不再涉及?号,排除http://在?后的情况
         String url = oriUrl.split("[?]")[0];
-        //获取file_path与domain
-        if (url.contains("http://") || url.contains("https://")) {
-            //包含http://或者https://时
-            //获取domain
-            if (url.split("//")[1].split("/")[0].split(":").length <= 2) {
-                //按照:切分后最终长度为1或2,说明是v4
-                String v4Domain = url.split("//")[1]//按照//切分,索引1包含domain
-                        .split("/")[0]//按照/切分,索引0包含domain
-                        .split(":")[0];//v4按照:切分去除domain上的端口号后,索引0为最终域名
-                return v4Domain;
-            } else {
-                //按照:切分后长度>2,说明是v6地址,v6地址不包含端口号(暂定),只需要先切分//再切分/
-                String v6Domain = url.split("//")[1]//按照//切分,索引1包含domain
-                        .split("/")[0];//v6按照/切分后索引0就是domain
-                return v6Domain;
-            }
+        //排除http://或https://干扰
+        url = url.replaceAll("https://","").replaceAll("http://","");
+        String domain;
+
+        //获取domain
+        if (url.split("/")[0].split(":").length <= 2) {
+            //按照:切分后最终长度为1或2,说明是v4
+            domain = url
+                    //按照/切分,索引0包含domain
+                    .split("/")[0]
+                    //v4按照:切分去除domain上的端口号后,索引0为最终域名
+                    .split(":")[0];
         } else {
-            //无http://或者https://
-            //获取domain
-            if (url.split("/")[0].split(":").length <= 2) {
-                //按照:切分后长度为1或2,说明为v4
-                //无http://时直接按照/切分,索引0包含域名domain,再按照":"切分,0索引就是domain
-                String v4Domain = url.split("/")[0].split(":")[0];
-                return v4Domain;
-            } else {
-                //按照:切分后长度>2,说明为v6,v6地址不包含端口号(暂定),只需要切分/取索引0
-                String v6Domain = url.split("/")[0];
-                return v6Domain;
-            }
+            //按照:切分后长度>2,说明是v6地址,v6地址不包含端口号(暂定),只需要先切分//再切分/
+            domain = url.split("/")[0];
         }
+        return domain;
+
     }
 }

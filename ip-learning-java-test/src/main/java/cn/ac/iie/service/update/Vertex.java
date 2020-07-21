@@ -4,7 +4,6 @@ import cn.ac.iie.utils.ArangoDBConnect;
 import com.arangodb.entity.BaseDocument;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
@@ -28,8 +27,8 @@ public class Vertex extends Document<BaseDocument> {
     }
 
     @Override
-    protected void mergeFunction(Map<String, Object> properties, BaseDocument doc) {
-        super.mergeFunction(properties, doc);
+    protected void mergeFunction(BaseDocument lastDoc,BaseDocument newDocument) {
+        super.mergeFunction(lastDoc, newDocument);
     }
 
     @Override

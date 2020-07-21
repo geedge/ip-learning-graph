@@ -24,6 +24,7 @@ public class BaseArangoData {
     public static ConcurrentHashMap<String, BaseDocument> historyVertexSubscriberMap = new ConcurrentHashMap<>();
     public static ConcurrentHashMap<String, BaseEdgeDocument> historyRelationFqdnAddressIpMap = new ConcurrentHashMap<>();
     public static ConcurrentHashMap<String, BaseEdgeDocument> historyRelationIpVisitFqdnMap = new ConcurrentHashMap<>();
+    public static ConcurrentHashMap<String, BaseEdgeDocument> historyRelationFqdnSameFqdnMap = new ConcurrentHashMap<>();
     public static ConcurrentHashMap<String, BaseEdgeDocument> historyRelationSubsciberLocateIpMap = new ConcurrentHashMap<>();
 
     private static ArangoDBConnect arangoDBConnect = ArangoDBConnect.getInstance();

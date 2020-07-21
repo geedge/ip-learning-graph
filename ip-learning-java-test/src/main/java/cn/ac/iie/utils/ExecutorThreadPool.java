@@ -1,11 +1,14 @@
 package cn.ac.iie.utils;
 
 import cn.ac.iie.config.ApplicationConfig;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
+/**
+ * 线程池管理
+ * @author wlh
+ */
 public class ExecutorThreadPool {
     private static ExecutorService pool = null ;
     private static ExecutorThreadPool poolExecutor = null;
@@ -15,7 +18,15 @@ public class ExecutorThreadPool {
     }
 
     private static void getThreadPool(){
-        pool = Executors.newFixedThreadPool(ApplicationConfig.THREAD_POOL_NUMBER);
+        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
+                .setNameFormat("iplearning-application-pool-%d").build();
+
+        //Common Thread Pool
+        pool = new ThreadPoolExecutor(ApplicationConfig.THREAD_POOL_NUMBER, ApplicationConfig.THREAD_POOL_NUMBER*2,
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(1024), namedThreadFactory, new ThreadPoolExecutor.AbortPolicy());
+
+//        pool = Executors.newFixedThreadPool(ApplicationConfig.THREAD_POOL_NUMBER);
     }
 
     public static ExecutorThreadPool getInstance(){
@@ -29,6 +40,7 @@ public class ExecutorThreadPool {
         pool.execute(command);
     }
 
+    @Deprecated
     public void awaitThreadTask(){
         try {
             while (!pool.awaitTermination(ApplicationConfig.THREAD_AWAIT_TERMINATION_TIME, TimeUnit.SECONDS)) {

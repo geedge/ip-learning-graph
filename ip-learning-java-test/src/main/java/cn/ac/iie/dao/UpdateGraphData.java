@@ -45,8 +45,8 @@ public class UpdateGraphData {
             baseArangoData.readHistoryData("IP", historyVertexIpMap,BaseDocument.class);
             updateVertexIp();
 
-            baseArangoData.readHistoryData("SUBSCRIBER", historyVertexSubscriberMap,BaseDocument.class);
-            updateVertexSubscriber();
+//            baseArangoData.readHistoryData("SUBSCRIBER", historyVertexSubscriberMap,BaseDocument.class);
+//            updateVertexSubscriber();
 
             baseArangoData.readHistoryData("R_LOCATE_FQDN2IP", historyRelationFqdnAddressIpMap,BaseEdgeDocument.class);
             updateRelationFqdnAddressIp();
@@ -54,8 +54,11 @@ public class UpdateGraphData {
             baseArangoData.readHistoryData("R_VISIT_IP2FQDN", historyRelationIpVisitFqdnMap,BaseEdgeDocument.class);
             updateRelationIpVisitFqdn();
 
-            baseArangoData.readHistoryData("R_LOCATE_SUBSCRIBER2IP", historyRelationSubsciberLocateIpMap,BaseEdgeDocument.class);
-            updateRelationshipSubsciberLocateIp();
+            baseArangoData.readHistoryData("R_SAME_ORIGIN_FQDN2FQDN",historyRelationFqdnSameFqdnMap,BaseEdgeDocument.class);
+            updateRelationFqdnSameFqdn();
+
+//            baseArangoData.readHistoryData("R_LOCATE_SUBSCRIBER2IP", historyRelationSubsciberLocateIpMap,BaseEdgeDocument.class);
+//            updateRelationshipSubsciberLocateIp();
 
             long last = System.currentTimeMillis();
             LOG.info("更新图数据库时间共计："+(last - start));
@@ -190,6 +193,27 @@ public class UpdateGraphData {
         }finally {
             historyRelationIpVisitFqdnMap.clear();
             newRelationIpVisitFqdnMap.clear();
+        }
+    }
+
+    private void updateRelationFqdnSameFqdn(){
+        try {
+            long start = System.currentTimeMillis();
+            baseClickhouseData.baseRelationshipFqdnSameFqdn();
+            countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER);
+            for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
+                HashMap<String, ArrayList<BaseEdgeDocument>> tmpMap = newRelationFqdnSameFqdnMap.get(i);
+                VisitIp2Fqdn ipVisitFqdn = new VisitIp2Fqdn(tmpMap,arangoManger,"R_SAME_ORIGIN_FQDN2FQDN", historyRelationFqdnSameFqdnMap,countDownLatch);
+                pool.executor(ipVisitFqdn);
+            }
+            countDownLatch.await();
+            long last = System.currentTimeMillis();
+            LOG.info("R_SAME_ORIGIN_FQDN2FQDN ralationship 更新完毕，共耗时："+(last-start));
+        }catch (Exception e){
+            e.printStackTrace();
+        }finally {
+            historyRelationFqdnSameFqdnMap.clear();
+            newRelationFqdnSameFqdnMap.clear();
         }
     }
 

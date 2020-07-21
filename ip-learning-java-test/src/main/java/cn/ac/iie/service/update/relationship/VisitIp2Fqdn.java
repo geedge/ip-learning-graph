@@ -6,7 +6,6 @@ import com.arangodb.entity.BaseEdgeDocument;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
@@ -22,14 +21,12 @@ public class VisitIp2Fqdn extends Relationship {
     @Override
     protected void updateFunction(BaseEdgeDocument newEdgeDocument, BaseEdgeDocument historyEdgeDocument) {
         super.updateFunction(newEdgeDocument, historyEdgeDocument);
-        updateProcotol(historyEdgeDocument,"TLS",newEdgeDocument);
-        updateProcotol(historyEdgeDocument,"HTTP",newEdgeDocument);
-        updateProcotol(historyEdgeDocument,"DNS",newEdgeDocument);
+        putSumAttribute(newEdgeDocument,historyEdgeDocument,"CNT_TOTAL");
     }
 
     @Override
-    protected void mergeFunction(Map<String, Object> newProperties, BaseEdgeDocument lastDoc) {
-        super.mergeFunction(newProperties, lastDoc);
-        mergeProtocol(newProperties, lastDoc);
+    protected void mergeFunction(BaseEdgeDocument lastDoc,BaseEdgeDocument newDocument) {
+        super.mergeFunction(lastDoc, newDocument);
+        putSumAttribute(lastDoc,newDocument,"CNT_TOTAL");
     }
 }

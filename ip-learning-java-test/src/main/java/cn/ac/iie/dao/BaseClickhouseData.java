@@ -29,6 +29,7 @@ public class BaseClickhouseData {
     static HashMap<Integer, HashMap<String, ArrayList<BaseEdgeDocument>>> newRelationFqdnAddressIpMap = new HashMap<>();
     static HashMap<Integer, HashMap<String, ArrayList<BaseEdgeDocument>>> newRelationIpVisitFqdnMap = new HashMap<>();
     static HashMap<Integer, HashMap<String, ArrayList<BaseEdgeDocument>>> newRelationSubsciberLocateIpMap = new HashMap<>();
+    static HashMap<Integer, HashMap<String, ArrayList<BaseEdgeDocument>>> newRelationFqdnSameFqdnMap = new HashMap<>();
 
     private DruidPooledConnection connection;
     private Statement statement;
@@ -143,6 +144,28 @@ public class BaseClickhouseData {
             LOG.info(sql + "\n读取clickhouse EFqdnAddressIp时间：" + (last - start));
         } catch (Exception e) {
             LOG.error(e.toString());
+        }finally {
+            manger.clear(statement,connection);
+        }
+    }
+
+    void baseRelationshipFqdnSameFqdn(){
+        initializeMap(newRelationFqdnSameFqdnMap);
+        LOG.info("R_SAME_ORIGIN_FQDN2FQDN resultMap初始化完成");
+        String sql = getRelationshipFqdnSameFqdnSql();
+        long start = System.currentTimeMillis();
+        try {
+            connection = manger.getConnection();
+            statement = connection.createStatement();
+            ResultSet resultSet = statement.executeQuery(sql);
+            while (resultSet.next()) {
+                BaseEdgeDocument newDoc = getRelationshipFqdnSameFqdnDocument(resultSet);
+                putMapByHashcode(newDoc, newRelationFqdnSameFqdnMap);
+            }
+            long last = System.currentTimeMillis();
+            LOG.info(sql + "\n读取clickhouse EIpVisitFqdn时间：" + (last - start));
+        }catch (Exception e){
+            e.printStackTrace();
         }finally {
             manger.clear(statement,connection);
         }
