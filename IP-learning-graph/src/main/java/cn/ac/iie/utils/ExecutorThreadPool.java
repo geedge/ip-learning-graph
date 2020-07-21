@@ -1,12 +1,11 @@
 package cn.ac.iie.utils;
 
 import cn.ac.iie.config.ApplicationConfig;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 public class ExecutorThreadPool {
     private static final Logger LOG = LoggerFactory.getLogger(ExecutorThreadPool.class);
@@ -18,7 +17,11 @@ public class ExecutorThreadPool {
     }
 
     private static void getThreadPool(){
-        pool = Executors.newFixedThreadPool(ApplicationConfig.THREAD_POOL_NUMBER);
+        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
+                .setNameFormat("iplearning-application-pool-%d").build();
+        pool = new ThreadPoolExecutor(5, ApplicationConfig.THREAD_POOL_NUMBER,
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(1024), namedThreadFactory, new ThreadPoolExecutor.AbortPolicy());
     }
 
     public static ExecutorThreadPool getInstance(){
@@ -32,6 +35,7 @@ public class ExecutorThreadPool {
         pool.execute(command);
     }
 
+    @Deprecated
     public void awaitThreadTask(){
         try {
             while (!pool.awaitTermination(ApplicationConfig.THREAD_AWAIT_TERMINATION_TIME, TimeUnit.SECONDS)) {
