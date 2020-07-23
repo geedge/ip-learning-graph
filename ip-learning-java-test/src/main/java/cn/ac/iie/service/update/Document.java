@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -20,30 +19,28 @@ public class Document<T extends BaseDocument> extends Thread{
     private String collectionName;
     private ConcurrentHashMap<String, T> historyDocumentMap;
     private CountDownLatch countDownLatch;
-    private Class<T> type;
 
     Document(HashMap<String, ArrayList<T>> newDocumentMap,
              ArangoDBConnect arangoManger,
              String collectionName,
              ConcurrentHashMap<String, T> historyDocumentMap,
-             CountDownLatch countDownLatch,
-             Class<T> type) {
+             CountDownLatch countDownLatch) {
         this.newDocumentMap = newDocumentMap;
         this.arangoManger = arangoManger;
         this.collectionName = collectionName;
         this.historyDocumentMap = historyDocumentMap;
         this.countDownLatch = countDownLatch;
-        this.type = type;
     }
 
 
     @Override
     public void run() {
-        LOG.info(collectionName+" new Map 大小："+newDocumentMap.size());
-        Set<String> keySet = newDocumentMap.keySet();
-        ArrayList<T> resultDocumentList = new ArrayList<>();
-        int i = 0;
+        long start = System.currentTimeMillis();
+        LOG.info("新读取数据"+newDocumentMap.size()+"条，历史数据"+historyDocumentMap.size()+"条");
         try {
+            Set<String> keySet = newDocumentMap.keySet();
+            ArrayList<T> resultDocumentList = new ArrayList<>();
+            int i = 0;
             for (String key : keySet) {
                 ArrayList<T> newDocumentSchemaList = newDocumentMap.getOrDefault(key, null);
                 if (newDocumentSchemaList != null) {
@@ -67,6 +64,8 @@ public class Document<T extends BaseDocument> extends Thread{
             LOG.error(e.toString());
         }finally {
             countDownLatch.countDown();
+            long last = System.currentTimeMillis();
+            LOG.info("本线程更新完毕，用时："+(last-start)+"，剩余线程数量："+countDownLatch.getCount());
         }
     }
 
@@ -84,13 +83,12 @@ public class Document<T extends BaseDocument> extends Thread{
         historyDocument.addAttribute("LAST_FOUND_TIME",lastFoundTime);
     }
 
-    private T mergeDocument(ArrayList<T> newDocumentSchemaList) throws IllegalAccessException, InstantiationException {
+    private T mergeDocument(ArrayList<T> newDocumentSchemaList){
         if (newDocumentSchemaList == null || newDocumentSchemaList.isEmpty()){
             return null;
         }else if (newDocumentSchemaList.size() == 1){
             return newDocumentSchemaList.get(0);
         }else {
-//            T newDocument = type.newInstance();
             T newDocument = null;
             for (T lastDoc:newDocumentSchemaList){
                 if (newDocument == null){

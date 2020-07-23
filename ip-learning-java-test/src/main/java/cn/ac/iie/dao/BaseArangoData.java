@@ -15,25 +15,30 @@ import java.util.concurrent.CountDownLatch;
 
 /**
  * 获取arangoDB历史数据
+ * @author wlh
  */
 public class BaseArangoData {
     private static final Logger LOG = LoggerFactory.getLogger(BaseArangoData.class);
 
-    public static ConcurrentHashMap<String, BaseDocument> historyVertexFqdnMap = new ConcurrentHashMap<>();
-    public static ConcurrentHashMap<String, BaseDocument> historyVertexIpMap = new ConcurrentHashMap<>();
-    public static ConcurrentHashMap<String, BaseDocument> historyVertexSubscriberMap = new ConcurrentHashMap<>();
-    public static ConcurrentHashMap<String, BaseEdgeDocument> historyRelationFqdnAddressIpMap = new ConcurrentHashMap<>();
-    public static ConcurrentHashMap<String, BaseEdgeDocument> historyRelationIpVisitFqdnMap = new ConcurrentHashMap<>();
-    public static ConcurrentHashMap<String, BaseEdgeDocument> historyRelationFqdnSameFqdnMap = new ConcurrentHashMap<>();
-    public static ConcurrentHashMap<String, BaseEdgeDocument> historyRelationSubsciberLocateIpMap = new ConcurrentHashMap<>();
+    static ConcurrentHashMap<Integer,ConcurrentHashMap<String, BaseDocument>> historyVertexFqdnMap = new ConcurrentHashMap<>();
+    static ConcurrentHashMap<Integer,ConcurrentHashMap<String, BaseDocument>> historyVertexIpMap = new ConcurrentHashMap<>();
+    static ConcurrentHashMap<Integer,ConcurrentHashMap<String, BaseDocument>> historyVertexSubscriberMap = new ConcurrentHashMap<>();
+    static ConcurrentHashMap<Integer,ConcurrentHashMap<String, BaseEdgeDocument>> historyRelationFqdnAddressIpMap = new ConcurrentHashMap<>();
+    static ConcurrentHashMap<Integer,ConcurrentHashMap<String, BaseEdgeDocument>> historyRelationIpVisitFqdnMap = new ConcurrentHashMap<>();
+    static ConcurrentHashMap<Integer,ConcurrentHashMap<String, BaseEdgeDocument>> historyRelationFqdnSameFqdnMap = new ConcurrentHashMap<>();
+    static ConcurrentHashMap<Integer,ConcurrentHashMap<String, BaseEdgeDocument>> historyRelationSubsciberLocateIpMap = new ConcurrentHashMap<>();
 
     private static ArangoDBConnect arangoDBConnect = ArangoDBConnect.getInstance();
 
     private ExecutorThreadPool threadPool = ExecutorThreadPool.getInstance();
 
-    <T extends BaseDocument> void readHistoryData(String table, ConcurrentHashMap<String, T> map, Class<T> type){
+    <T extends BaseDocument> void readHistoryData(String table, ConcurrentHashMap<Integer,ConcurrentHashMap<String, T>> map, Class<T> type){
         try {
+            LOG.info("开始更新"+table);
             long start = System.currentTimeMillis();
+            for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++){
+                map.put(i,new ConcurrentHashMap<>());
+            }
             CountDownLatch countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER);
             long[] timeRange = getTimeRange(table);
             for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
@@ -44,7 +49,6 @@ public class BaseArangoData {
             countDownLatch.await();
             long last = System.currentTimeMillis();
             LOG.info("读取"+table+" arangoDB 共耗时："+(last-start));
-            LOG.info(table+" history Map大小为："+map.size());
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -81,7 +85,7 @@ public class BaseArangoData {
         long diffTime = (maxTime - minTime) / ApplicationConfig.THREAD_POOL_NUMBER;
         long maxThreadTime = minTime + (threadNumber + 1)* diffTime;
         long minThreadTime = minTime + threadNumber * diffTime;
-        return "FOR doc IN "+table+" filter doc.FIRST_FOUND_TIME >= "+minThreadTime+" and doc.FIRST_FOUND_TIME <= "+maxThreadTime+" RETURN doc";
+        return "FOR doc IN "+table+" filter doc.FIRST_FOUND_TIME >= "+minThreadTime+" and doc.FIRST_FOUND_TIME <= "+maxThreadTime+" limit 100 RETURN doc";
     }
 
 }

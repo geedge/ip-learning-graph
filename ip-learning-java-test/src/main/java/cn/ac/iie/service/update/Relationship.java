@@ -16,7 +16,7 @@ public class Relationship extends Document<BaseEdgeDocument> {
                         String collectionName,
                         ConcurrentHashMap<String, BaseEdgeDocument> historyDocumentMap,
                         CountDownLatch countDownLatch) {
-        super(newDocumentHashMap,arangoManger,collectionName,historyDocumentMap,countDownLatch,BaseEdgeDocument.class);
+        super(newDocumentHashMap,arangoManger,collectionName,historyDocumentMap,countDownLatch);
     }
 
     @Override

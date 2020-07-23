@@ -18,7 +18,7 @@ public class Vertex extends Document<BaseDocument> {
                   String collectionName,
                   ConcurrentHashMap<String, BaseDocument> historyDocumentMap,
                   CountDownLatch countDownLatch) {
-        super(newDocumentHashMap, arangoManger, collectionName, historyDocumentMap, countDownLatch,BaseDocument.class);
+        super(newDocumentHashMap, arangoManger, collectionName, historyDocumentMap, countDownLatch);
     }
 
     @Override

@@ -56,7 +56,7 @@ public class TopDomainUtils {
                 InputStreamReader read = new InputStreamReader(
                         new FileInputStream(file), encoding);
                 BufferedReader bufferedReader = new BufferedReader(read);
-                String lineTxt = null;
+                String lineTxt;
                 while ((lineTxt = bufferedReader.readLine()) != null) {
                     HashMap<String, String> fullTop = maps.get("full");
                     fullTop.put(lineTxt, lineTxt);
@@ -85,9 +85,9 @@ public class TopDomainUtils {
         try {
             String encoding = "UTF-8";
             File file = new File(filePath);
-            if (file.isFile() && file.exists()) { //判断文件是否存在
+            if (file.isFile() && file.exists()) {
                 InputStreamReader read = new InputStreamReader(
-                        new FileInputStream(file), encoding);//考虑到编码格式
+                        new FileInputStream(file), encoding);
                 BufferedReader bufferedReader = new BufferedReader(read);
                 String lineTxt = null;
                 while ((lineTxt = bufferedReader.readLine()) != null) {
