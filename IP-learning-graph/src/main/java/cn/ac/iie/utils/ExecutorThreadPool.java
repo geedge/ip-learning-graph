@@ -20,7 +20,7 @@ public class ExecutorThreadPool {
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
                 .setNameFormat("iplearning-application-pool-%d").build();
         pool = new ThreadPoolExecutor(5, ApplicationConfig.THREAD_POOL_NUMBER,
-                0L, TimeUnit.MILLISECONDS,
+                0L, TimeUnit.SECONDS,
                 new LinkedBlockingQueue<>(1024), namedThreadFactory, new ThreadPoolExecutor.AbortPolicy());
     }
 

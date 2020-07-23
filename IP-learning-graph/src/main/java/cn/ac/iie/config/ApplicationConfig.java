@@ -21,5 +21,11 @@ public class ApplicationConfig {
     public static final Long READ_CLICKHOUSE_MAX_TIME = ConfigUtils.getLongProperty("read.clickhouse.max.time");
     public static final Long READ_CLICKHOUSE_MIN_TIME = ConfigUtils.getLongProperty("read.clickhouse.min.time");
 
+    public static final Integer TIME_LIMIT_TYPE = ConfigUtils.getIntProperty("time.limit.type");
+    public static final Integer UPDATE_INTERVAL = ConfigUtils.getIntProperty("update.interval");
+
+    public static final Integer DISTINCT_CLIENT_IP_NUM = ConfigUtils.getIntProperty("distinct.client.ip.num");
+    public static final Integer RECENT_COUNT_HOUR = ConfigUtils.getIntProperty("recent.count.hour");
+
 
 }

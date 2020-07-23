@@ -71,27 +71,6 @@ public class ArangoDBConnect {
         }
     }
 
-    @Deprecated
-    public <T> void insertAndUpdate(ArrayList<T> docInsert,ArrayList<T> docUpdate,String collectionName){
-        ArangoDatabase database = getDatabase();
-        try {
-            ArangoCollection collection = database.collection(collectionName);
-            if (!docInsert.isEmpty()){
-                DocumentCreateOptions documentCreateOptions = new DocumentCreateOptions();
-//                documentCreateOptions.overwrite(true);
-                collection.insertDocuments(docInsert, documentCreateOptions);
-            }
-            if (!docUpdate.isEmpty()){
-                collection.replaceDocuments(docUpdate);
-            }
-        }catch (Exception e){
-            LOG.error("更新失败\n"+e.toString());
-        }finally {
-            docInsert.clear();
-            docInsert.clear();
-        }
-    }
-
     public <T> void overwrite(ArrayList<T> docOverwrite,String collectionName){
         ArangoDatabase database = getDatabase();
         try {

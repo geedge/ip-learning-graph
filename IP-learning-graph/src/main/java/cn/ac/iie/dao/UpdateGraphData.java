@@ -1,6 +1,7 @@
 package cn.ac.iie.dao;
 
 import cn.ac.iie.config.ApplicationConfig;
+import cn.ac.iie.service.ingestion.ReadClickhouseData;
 import cn.ac.iie.service.update.Document;
 import cn.ac.iie.service.update.relationship.LocateFqdn2Ip;
 import cn.ac.iie.service.update.relationship.LocateSubscriber2Ip;
@@ -15,9 +16,14 @@ import com.arangodb.entity.BaseEdgeDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Constructor;
+import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 import static cn.ac.iie.dao.BaseArangoData.*;
 import static cn.ac.iie.dao.BaseClickhouseData.*;
@@ -30,35 +36,41 @@ public class UpdateGraphData {
     private static final Logger LOG = LoggerFactory.getLogger(UpdateGraphData.class);
     private static ExecutorThreadPool pool = ExecutorThreadPool.getInstance();
     private static ArangoDBConnect arangoManger = ArangoDBConnect.getInstance();
-
+    private static BaseArangoData baseArangoData = new BaseArangoData();
     private static BaseClickhouseData baseClickhouseData = new BaseClickhouseData();
-    private CountDownLatch countDownLatch;
+
 
     public void updateArango(){
         long start = System.currentTimeMillis();
         try {
-            BaseArangoData baseArangoData = new BaseArangoData();
 
-            baseArangoData.readHistoryData("FQDN", historyVertexFqdnMap,BaseDocument.class);
-            updateVertexFqdn();
+            updateDocument(newVertexFqdnMap, historyVertexFqdnMap, "FQDN",
+                    Fqdn.class,BaseDocument.class,
+                    ReadClickhouseData::getVertexFqdnSql,ReadClickhouseData::getVertexFqdnDocument);
 
-            baseArangoData.readHistoryData("IP", historyVertexIpMap,BaseDocument.class);
-            updateVertexIp();
+            updateDocument(newVertexIpMap,historyVertexIpMap,"IP",
+                    Ip.class,BaseDocument.class,
+                    ReadClickhouseData::getVertexIpSql,ReadClickhouseData::getVertexIpDocument);
 
-            baseArangoData.readHistoryData("SUBSCRIBER", historyVertexSubscriberMap,BaseDocument.class);
-            updateVertexSubscriber();
+            updateDocument(newVertexSubscriberMap,historyVertexSubscriberMap,"SUBSCRIBER",
+                    Subscriber.class,BaseDocument.class,
+                    ReadClickhouseData::getVertexSubscriberSql,ReadClickhouseData::getVertexSubscriberDocument);
 
-            baseArangoData.readHistoryData("R_LOCATE_FQDN2IP", historyRelationFqdnAddressIpMap,BaseEdgeDocument.class);
-            updateRelationFqdnAddressIp();
+            updateDocument(newRelationFqdnAddressIpMap,historyRelationFqdnAddressIpMap,"R_LOCATE_FQDN2IP",
+                    LocateFqdn2Ip.class,BaseEdgeDocument.class,
+                    ReadClickhouseData::getRelationshipFqdnAddressIpSql,ReadClickhouseData::getRelationFqdnAddressIpDocument);
 
-            baseArangoData.readHistoryData("R_VISIT_IP2FQDN", historyRelationIpVisitFqdnMap,BaseEdgeDocument.class);
-            updateRelationIpVisitFqdn();
+            updateDocument(newRelationIpVisitFqdnMap,historyRelationIpVisitFqdnMap,"R_VISIT_IP2FQDN",
+                    VisitIp2Fqdn.class,BaseEdgeDocument.class,
+                    ReadClickhouseData::getRelationshipIpVisitFqdnSql,ReadClickhouseData::getRelationIpVisitFqdnDocument);
 
-            baseArangoData.readHistoryData("R_LOCATE_SUBSCRIBER2IP", historyRelationSubsciberLocateIpMap,BaseEdgeDocument.class);
-            updateRelationshipSubsciberLocateIp();
+            updateDocument(newRelationSubsciberLocateIpMap,historyRelationSubsciberLocateIpMap,"R_LOCATE_SUBSCRIBER2IP",
+                    LocateSubscriber2Ip.class,BaseEdgeDocument.class,
+                    ReadClickhouseData::getRelationshipSubsciberLocateIpSql,ReadClickhouseData::getRelationshipSubsciberLocateIpDocument);
+
 
             long last = System.currentTimeMillis();
-            LOG.info("更新图数据库时间共计："+(last - start));
+            LOG.info("iplearning application运行完毕，用时："+(last - start));
         }catch (Exception e){
             e.printStackTrace();
         }finally {
@@ -67,130 +79,46 @@ public class UpdateGraphData {
         }
     }
 
-    private void updateVertexFqdn(){
+
+    private <T extends BaseDocument> void updateDocument(HashMap<Integer, HashMap<String, ArrayList<T>>> newMap,
+                                                         ConcurrentHashMap<Integer, ConcurrentHashMap<String, T>> historyMap,
+                                                         String collection,
+                                                         Class<? extends Document<T>> taskType,
+                                                         Class<T> docmentType,
+                                                         Supplier<String> getSqlSupplier,
+                                                         Function<ResultSet,T> formatResultFunc
+                                                         ) {
         try {
+
+            baseArangoData.readHistoryData(collection,historyMap,docmentType);
+            LOG.info(collection+" 读取clickhouse,封装结果集");
+            baseClickhouseData.baseDocumentFromClickhouse(newMap, getSqlSupplier,formatResultFunc);
+
+            LOG.info(collection+" 开始更新");
             long start = System.currentTimeMillis();
-            baseClickhouseData.baseVertexFqdn();
-            countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER);
-            for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
-                HashMap<String, ArrayList<BaseDocument>> tmpMap = newVertexFqdnMap.get(i);
-                Document updateFqdn = new Fqdn(tmpMap, arangoManger, "FQDN", historyVertexFqdnMap,countDownLatch);
-                pool.executor(updateFqdn);
+            CountDownLatch countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER);
+            for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++){
+                HashMap<String, ArrayList<T>> tmpNewMap = newMap.get(i);
+                ConcurrentHashMap<String, T> tmpHisMap = historyMap.get(i);
+                Constructor constructor = taskType.getConstructor(
+                        HashMap.class,
+                        ArangoDBConnect.class,
+                        String.class,
+                        ConcurrentHashMap.class,
+                        CountDownLatch.class);
+                Document<T> docTask = (Document<T>)constructor.newInstance(tmpNewMap, arangoManger, collection, tmpHisMap, countDownLatch);
+                pool.executor(docTask);
             }
             countDownLatch.await();
             long last = System.currentTimeMillis();
-            LOG.info("FQDN vertex 更新完毕,共耗时："+(last-start));
+            LOG.info(collection+" 更新完毕,共耗时："+(last-start));
         }catch (Exception e){
             e.printStackTrace();
         }finally {
-            historyVertexFqdnMap.clear();
-            newVertexFqdnMap.clear();
+            newMap.clear();
+            historyMap.clear();
         }
     }
 
-    private void updateVertexSubscriber(){
-        try {
-            long start = System.currentTimeMillis();
-            baseClickhouseData.baseVertexSubscriber();
-            countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER);
-            for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
-                HashMap<String, ArrayList<BaseDocument>> tmpMap = newVertexSubscriberMap.get(i);
-                Subscriber updateSubscriber = new Subscriber(tmpMap, arangoManger, "SUBSCRIBER", historyVertexSubscriberMap,countDownLatch);
-                pool.executor(updateSubscriber);
-            }
-            countDownLatch.await();
-            long last = System.currentTimeMillis();
-            LOG.info("SUBSCRIBER vertex 更新完毕,共耗时："+(last-start));
-        }catch (Exception e){
-            e.printStackTrace();
-        }finally {
-            historyVertexSubscriberMap.clear();
-            newVertexSubscriberMap.clear();
-        }
-    }
-
-    private void updateRelationshipSubsciberLocateIp(){
-        try {
-            long start = System.currentTimeMillis();
-            baseClickhouseData.baseRelationshipSubscriberLocateIp();
-            countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER);
-            for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
-                HashMap<String, ArrayList<BaseEdgeDocument>> tmpMap = newRelationSubsciberLocateIpMap.get(i);
-                LocateSubscriber2Ip locateSubscriber2Ip = new LocateSubscriber2Ip(tmpMap, arangoManger, "R_LOCATE_SUBSCRIBER2IP", historyRelationSubsciberLocateIpMap, countDownLatch);
-                pool.executor(locateSubscriber2Ip);
-            }
-            countDownLatch.await();
-            long last = System.currentTimeMillis();
-            LOG.info("R_LOCATE_SUBSCRIBER2IP relationship 更新完毕,共耗时："+(last-start));
-        }catch (Exception e){
-            e.printStackTrace();
-        }finally {
-            historyRelationSubsciberLocateIpMap.clear();
-            newRelationSubsciberLocateIpMap.clear();
-        }
-    }
-
-    private void updateVertexIp(){
-        try {
-            long start = System.currentTimeMillis();
-            baseClickhouseData.baseVertexIp();
-            countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER);
-            for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
-                HashMap<String, ArrayList<BaseDocument>> tmpMap = newVertexIpMap.get(i);
-                Ip updateIp = new Ip(tmpMap, arangoManger, "IP", historyVertexIpMap, countDownLatch);
-                pool.executor(updateIp);
-            }
-            countDownLatch.await();
-            long last = System.currentTimeMillis();
-            LOG.info("IP vertex 更新完毕，共耗时："+(last-start));
-        }catch (Exception e){
-            e.printStackTrace();
-        }finally {
-            historyVertexIpMap.clear();
-            newVertexIpMap.clear();
-        }
-    }
-
-    private void updateRelationFqdnAddressIp(){
-        try {
-            long start = System.currentTimeMillis();
-            baseClickhouseData.baseRelationshipFqdnAddressIp();
-            countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER);
-            for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
-                HashMap<String, ArrayList<BaseEdgeDocument>> tmpMap = newRelationFqdnAddressIpMap.get(i);
-                LocateFqdn2Ip fqdnAddressIp = new LocateFqdn2Ip(tmpMap, arangoManger, "R_LOCATE_FQDN2IP", historyRelationFqdnAddressIpMap, countDownLatch);
-                pool.executor(fqdnAddressIp);
-            }
-            countDownLatch.await();
-            long last = System.currentTimeMillis();
-            LOG.info("R_LOCATE_FQDN2IP relationship 更新完毕，共耗时："+(last-start));
-        }catch (Exception e){
-            e.printStackTrace();
-        }finally {
-            historyRelationFqdnAddressIpMap.clear();
-            newRelationFqdnAddressIpMap.clear();
-        }
-    }
-
-    private void updateRelationIpVisitFqdn(){
-        try {
-            long start = System.currentTimeMillis();
-            baseClickhouseData.baseRelationshipIpVisitFqdn();
-            countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER);
-            for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
-                HashMap<String, ArrayList<BaseEdgeDocument>> tmpMap = newRelationIpVisitFqdnMap.get(i);
-                VisitIp2Fqdn ipVisitFqdn = new VisitIp2Fqdn(tmpMap,arangoManger,"R_VISIT_IP2FQDN", historyRelationIpVisitFqdnMap,countDownLatch);
-                pool.executor(ipVisitFqdn);
-            }
-            countDownLatch.await();
-            long last = System.currentTimeMillis();
-            LOG.info("R_VISIT_IP2FQDN ralationship 更新完毕，共耗时："+(last-start));
-        }catch (Exception e){
-            e.printStackTrace();
-        }finally {
-            historyRelationIpVisitFqdnMap.clear();
-            newRelationIpVisitFqdnMap.clear();
-        }
-    }
 
 }

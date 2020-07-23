@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -20,29 +19,28 @@ public class Document<T extends BaseDocument> extends Thread{
     private String collectionName;
     private ConcurrentHashMap<String, T> historyDocumentMap;
     private CountDownLatch countDownLatch;
-    private Class<T> type;
 
     Document(HashMap<String, ArrayList<T>> newDocumentMap,
              ArangoDBConnect arangoManger,
              String collectionName,
              ConcurrentHashMap<String, T> historyDocumentMap,
-             CountDownLatch countDownLatch,
-             Class<T> type) {
+             CountDownLatch countDownLatch) {
         this.newDocumentMap = newDocumentMap;
         this.arangoManger = arangoManger;
         this.collectionName = collectionName;
         this.historyDocumentMap = historyDocumentMap;
         this.countDownLatch = countDownLatch;
-        this.type = type;
     }
 
 
     @Override
     public void run() {
-        Set<String> keySet = newDocumentMap.keySet();
-        ArrayList<T> resultDocumentList = new ArrayList<>();
-        int i = 0;
+        long start = System.currentTimeMillis();
+        LOG.info("新读取数据"+newDocumentMap.size()+"条，历史数据"+historyDocumentMap.size()+"条");
         try {
+            Set<String> keySet = newDocumentMap.keySet();
+            ArrayList<T> resultDocumentList = new ArrayList<>();
+            int i = 0;
             for (String key : keySet) {
                 ArrayList<T> newDocumentSchemaList = newDocumentMap.getOrDefault(key, null);
                 if (newDocumentSchemaList != null) {
@@ -66,6 +64,8 @@ public class Document<T extends BaseDocument> extends Thread{
             LOG.error(e.toString());
         }finally {
             countDownLatch.countDown();
+            long last = System.currentTimeMillis();
+            LOG.info("本线程更新完毕，用时："+(last-start)+"，剩余线程数量："+countDownLatch.getCount());
         }
     }
 
@@ -83,35 +83,45 @@ public class Document<T extends BaseDocument> extends Thread{
         historyDocument.addAttribute("LAST_FOUND_TIME",lastFoundTime);
     }
 
-    private T mergeDocument(ArrayList<T> newDocumentSchemaList) throws IllegalAccessException, InstantiationException {
+    private T mergeDocument(ArrayList<T> newDocumentSchemaList){
         if (newDocumentSchemaList == null || newDocumentSchemaList.isEmpty()){
             return null;
         }else if (newDocumentSchemaList.size() == 1){
             return newDocumentSchemaList.get(0);
         }else {
-            T newDocument = type.newInstance();
-            Map<String, Object> newProperties = newDocument.getProperties();
-            for (T doc:newDocumentSchemaList){
-                if (newProperties.isEmpty()){
-                    newDocument = doc;
-                    newProperties = doc.getProperties();
+            T newDocument = null;
+            for (T lastDoc:newDocumentSchemaList){
+                if (newDocument == null){
+                    newDocument = lastDoc;
                 }else {
-                    mergeFunction(newProperties,doc);
+                    mergeFunction(lastDoc,newDocument);
                 }
             }
-            newDocument.setProperties(newProperties);
             return newDocument;
         }
     }
 
-    protected void mergeFunction(Map<String, Object> newProperties, T lastDoc) {
-        long firstFoundTime = Long.parseLong(newProperties.getOrDefault("FIRST_FOUND_TIME", 0L).toString());
-        long docFirstFoundTime = Long.parseLong(lastDoc.getAttribute("FIRST_FOUND_TIME").toString());
-        newProperties.put("FIRST_FOUND_TIME",firstFoundTime<docFirstFoundTime? firstFoundTime:docFirstFoundTime);
+    protected void mergeFunction(T lastDoc,T newDocument) {
+        putMinAttribute(lastDoc,newDocument,"FIRST_FOUND_TIME");
+        putMaxAttribute(lastDoc,newDocument,"LAST_FOUND_TIME");
+    }
 
-        long lastFoundTime = Long.parseLong(newProperties.getOrDefault("LAST_FOUND_TIME", 0L).toString());
-        long docLastFoundTime = Long.parseLong(lastDoc.getAttribute("LAST_FOUND_TIME").toString());
-        newProperties.put("LAST_FOUND_TIME",lastFoundTime>docLastFoundTime? lastFoundTime:docLastFoundTime);
+    protected void putMinAttribute(T firstDoc,T lastDoc,String attribute){
+        long firstMinAttribute = Long.parseLong(firstDoc.getAttribute(attribute).toString());
+        long lastMinAttribute = Long.parseLong(lastDoc.getAttribute(attribute).toString());
+        lastDoc.addAttribute(attribute,firstMinAttribute<lastMinAttribute? firstMinAttribute:lastMinAttribute);
+    }
+
+    protected void putMaxAttribute(T firstDoc,T lastDoc,String attribute){
+        long firstMaxAttribute = Long.parseLong(firstDoc.getAttribute(attribute).toString());
+        long lastMaxAttribute = Long.parseLong(lastDoc.getAttribute(attribute).toString());
+        lastDoc.addAttribute(attribute,firstMaxAttribute>lastMaxAttribute? firstMaxAttribute:lastMaxAttribute);
+    }
+
+    protected void putSumAttribute(T firstDoc,T lastDoc,String attribute){
+        long firstSumAttribute = Long.parseLong(firstDoc.getAttribute(attribute).toString());
+        long lastSumAttribute = Long.parseLong(lastDoc.getAttribute(attribute).toString());
+        lastDoc.addAttribute(attribute,firstSumAttribute+lastSumAttribute);
     }
 
 

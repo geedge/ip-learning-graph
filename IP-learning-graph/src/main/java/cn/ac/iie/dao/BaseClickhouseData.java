@@ -12,6 +12,8 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 import static cn.ac.iie.service.ingestion.ReadClickhouseData.*;
 
@@ -33,138 +35,26 @@ public class BaseClickhouseData {
     private DruidPooledConnection connection;
     private Statement statement;
 
-    void baseVertexFqdn() {
-        initializeMap(newVertexFqdnMap);
-        LOG.info("FQDN resultMap初始化完成");
-        String sql = getVertexFqdnSql();
+    <T extends BaseDocument> void baseDocumentFromClickhouse(HashMap<Integer, HashMap<String, ArrayList<T>>> newMap, Supplier<String> getSqlSupplier, Function<ResultSet,T> formatResultFunc){
         long start = System.currentTimeMillis();
+        initializeMap(newMap);
+        String sql = getSqlSupplier.get();
         try {
             connection = manger.getConnection();
             statement = connection.createStatement();
             ResultSet resultSet = statement.executeQuery(sql);
+            int i = 0;
             while (resultSet.next()) {
-                BaseDocument newDoc = getVertexFqdnDocument(resultSet);
+                T newDoc = formatResultFunc.apply(resultSet);
                 if (newDoc != null) {
-                    putMapByHashcode(newDoc, newVertexFqdnMap);
+                    i+=1;
+                    putMapByHashcode(newDoc, newMap);
                 }
             }
             long last = System.currentTimeMillis();
-            LOG.info(sql + "\n读取clickhouse v_FQDN时间：" + (last - start));
-        } catch (Exception e) {
-            LOG.error(e.toString());
-        }finally {
-            manger.clear(statement,connection);
-        }
-    }
-
-    void baseVertexIp() {
-        initializeMap(newVertexIpMap);
-        LOG.info("IP resultMap初始化完成");
-        String sql = getVertexIpSql();
-        long start = System.currentTimeMillis();
-        try {
-            connection = manger.getConnection();
-            statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery(sql);
-            while (resultSet.next()) {
-                BaseDocument newDoc = getVertexIpDocument(resultSet);
-                putMapByHashcode(newDoc, newVertexIpMap);
-            }
-            long last = System.currentTimeMillis();
-            LOG.info(sql + "\n读取clickhouse v_IP时间：" + (last - start));
-        } catch (Exception e) {
-            LOG.error(e.toString());
-        }finally {
-            manger.clear(statement,connection);
-        }
-    }
-
-    void baseVertexSubscriber(){
-        initializeMap(newVertexSubscriberMap);
-        LOG.info("SUBSCRIBER resultMap初始化完成");
-        String sql = getVertexSubscriberSql();
-        long start = System.currentTimeMillis();
-        try {
-            connection = manger.getConnection();
-            statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery(sql);
-            while (resultSet.next()){
-                BaseDocument newDoc = getVertexSubscriberDocument(resultSet);
-                putMapByHashcode(newDoc, newVertexSubscriberMap);
-            }
-            long last = System.currentTimeMillis();
-            LOG.info(sql + "\n读取clickhouse v_SUBSCRIBER时间：" + (last - start));
+            LOG.info(sql + "\n读取"+i+"条数据，运行时间：" + (last - start));
         }catch (Exception e){
-            LOG.error(sql + "\n读取clickhouse v_SUBSCRIBER失败");
             e.printStackTrace();
-        }finally {
-            manger.clear(statement,connection);
-        }
-    }
-
-    void baseRelationshipSubscriberLocateIp(){
-        initializeMap(newRelationSubsciberLocateIpMap);
-        LOG.info("R_LOCATE_SUBSCRIBER2IP");
-        String sql = getRelationshipSubsciberLocateIpSql();
-        long start = System.currentTimeMillis();
-        try {
-            connection = manger.getConnection();
-            statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery(sql);
-            while (resultSet.next()){
-                BaseEdgeDocument newDoc = getRelationshipSubsciberLocateIpDocument(resultSet);
-                putMapByHashcode(newDoc, newRelationSubsciberLocateIpMap);
-            }
-            long last = System.currentTimeMillis();
-            LOG.info(sql + "\n读取clickhouse ESubsciberLocateIp时间：" + (last - start));
-        }catch (Exception e){
-            LOG.error(sql + "\n读取clickhouse ESubsciberLocateIp失败");
-            e.printStackTrace();
-        }finally {
-            manger.clear(statement,connection);
-        }
-    }
-
-    void baseRelationshipFqdnAddressIp() {
-        initializeMap(newRelationFqdnAddressIpMap);
-        LOG.info("R_LOCATE_FQDN2IP resultMap初始化完成");
-        String sql = getRelationshipFqdnAddressIpSql();
-        long start = System.currentTimeMillis();
-        try {
-            connection = manger.getConnection();
-            statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery(sql);
-
-            while (resultSet.next()) {
-                BaseEdgeDocument newDoc = getRelationFqdnAddressIpDocument(resultSet);
-                putMapByHashcode(newDoc, newRelationFqdnAddressIpMap);
-            }
-            long last = System.currentTimeMillis();
-            LOG.info(sql + "\n读取clickhouse EFqdnAddressIp时间：" + (last - start));
-        } catch (Exception e) {
-            LOG.error(e.toString());
-        }finally {
-            manger.clear(statement,connection);
-        }
-    }
-
-    void baseRelationshipIpVisitFqdn() {
-        initializeMap(newRelationIpVisitFqdnMap);
-        LOG.info("R_VISIT_IP2FQDN resultMap初始化完成");
-        String sql = getRelationshipIpVisitFqdnSql();
-        long start = System.currentTimeMillis();
-        try {
-            connection = manger.getConnection();
-            statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery(sql);
-            while (resultSet.next()) {
-                BaseEdgeDocument newDoc = getRelationIpVisitFqdnDocument(resultSet);
-                putMapByHashcode(newDoc, newRelationIpVisitFqdnMap);
-            }
-            long last = System.currentTimeMillis();
-            LOG.info(sql + "\n读取clickhouse EIpVisitFqdn时间：" + (last - start));
-        } catch (Exception e) {
-            LOG.error(e.toString());
         }finally {
             manger.clear(statement,connection);
         }

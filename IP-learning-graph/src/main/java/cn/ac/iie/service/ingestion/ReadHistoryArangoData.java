@@ -1,5 +1,6 @@
 package cn.ac.iie.service.ingestion;
 
+import cn.ac.iie.config.ApplicationConfig;
 import cn.ac.iie.utils.ArangoDBConnect;
 import com.arangodb.ArangoCursor;
 import com.arangodb.entity.BaseDocument;
@@ -11,6 +12,8 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
+import static cn.ac.iie.service.ingestion.ReadClickhouseData.RECENT_COUNT_HOUR;
+
 /**
  * @author wlh
  * 多线程全量读取arangoDb历史数据，封装到map
@@ -20,12 +23,17 @@ public class ReadHistoryArangoData<T extends BaseDocument> extends Thread {
 
     private ArangoDBConnect arangoConnect;
     private String query;
-    private ConcurrentHashMap<String, T> map;
+    private ConcurrentHashMap<Integer,ConcurrentHashMap<String, T>> map;
     private Class<T> type;
     private String table;
     private CountDownLatch countDownLatch;
 
-    public ReadHistoryArangoData(ArangoDBConnect arangoConnect, String query, ConcurrentHashMap<String, T> map, Class<T> type, String table, CountDownLatch countDownLatch) {
+    public ReadHistoryArangoData(ArangoDBConnect arangoConnect,
+                                 String query,
+                                 ConcurrentHashMap<Integer,ConcurrentHashMap<String, T>> map,
+                                 Class<T> type,
+                                 String table,
+                                 CountDownLatch countDownLatch) {
         this.arangoConnect = arangoConnect;
         this.query = query;
         this.map = map;
@@ -53,26 +61,29 @@ public class ReadHistoryArangoData<T extends BaseDocument> extends Thread {
                             break;
                         default:
                     }
-                    map.put(key, doc);
+                    int hashCode = Math.abs(key.hashCode()) % ApplicationConfig.THREAD_POOL_NUMBER;
+                    ConcurrentHashMap<String, T> tmpMap = map.get(hashCode);
+                    tmpMap.put(key, doc);
                     i++;
                 }
                 long l = System.currentTimeMillis();
-                LOG.info(query + "\n读取数据" + i + "条，运行时间：" + (l - s));
+                LOG.info(query + "\n读取" + i + "条数据，运行时间：" + (l - s));
             }
         }catch (Exception e){
             e.printStackTrace();
         }finally {
             countDownLatch.countDown();
+            LOG.info("本线程读取完毕，剩余线程数量："+countDownLatch.getCount());
         }
     }
 
     private void updateProtocolDocument(T doc) {
         if (doc.getProperties().containsKey("PROTOCOL_TYPE")) {
-            for (String protocol : ReadClickhouseData.protocolSet) {
+            for (String protocol : ReadClickhouseData.PROTOCOL_SET) {
                 String protocolRecent = protocol + "_CNT_RECENT";
                 ArrayList<Long> cntRecent = (ArrayList<Long>) doc.getAttribute(protocolRecent);
                 Long[] cntRecentsSrc = cntRecent.toArray(new Long[cntRecent.size()]);
-                Long[] cntRecentsDst = new Long[24];
+                Long[] cntRecentsDst = new Long[RECENT_COUNT_HOUR];
                 System.arraycopy(cntRecentsSrc, 0, cntRecentsDst, 1, cntRecentsSrc.length - 1);
                 cntRecentsDst[0] = 0L;
                 doc.addAttribute(protocolRecent, cntRecentsDst);

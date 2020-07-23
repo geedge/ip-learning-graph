@@ -7,7 +7,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -23,142 +22,168 @@ public class ReadClickhouseData {
     private static Pattern pattern = Pattern.compile("^[\\d]*$");
     private static final Logger LOG = LoggerFactory.getLogger(ReadClickhouseData.class);
 
+    private static long[] timeLimit = getTimeLimit();
 
-    public static HashSet<String> protocolSet;
+    public static final Integer DISTINCT_CLIENT_IP_NUM = ApplicationConfig.DISTINCT_CLIENT_IP_NUM;
+    public static final Integer RECENT_COUNT_HOUR = ApplicationConfig.RECENT_COUNT_HOUR;
+    public static final HashSet<String> PROTOCOL_SET;
 
     static {
-        protocolSet = new HashSet<>();
-        protocolSet.add("HTTP");
-        protocolSet.add("TLS");
-        protocolSet.add("DNS");
+        PROTOCOL_SET = new HashSet<>();
+        PROTOCOL_SET.add("HTTP");
+        PROTOCOL_SET.add("TLS");
+        PROTOCOL_SET.add("DNS");
     }
 
-    public static BaseDocument getVertexFqdnDocument(ResultSet resultSet) throws SQLException {
-        String fqdnName = resultSet.getString("FQDN");
+    public static BaseDocument getVertexFqdnDocument(ResultSet resultSet) {
         BaseDocument newDoc = null;
-        if (isDomain(fqdnName)) {
-            long firstFoundTime = resultSet.getLong("FIRST_FOUND_TIME");
-            long lastFoundTime = resultSet.getLong("LAST_FOUND_TIME");
-            newDoc = new BaseDocument();
-            newDoc.setKey(fqdnName);
-            newDoc.addAttribute("FQDN_NAME", fqdnName);
-            newDoc.addAttribute("FIRST_FOUND_TIME", firstFoundTime);
-            newDoc.addAttribute("LAST_FOUND_TIME", lastFoundTime);
-        }
-        return newDoc;
-    }
-
-    public static BaseDocument getVertexIpDocument(ResultSet resultSet) throws SQLException {
-        BaseDocument newDoc = new BaseDocument();
-        String ip = resultSet.getString("IP");
-        long firstFoundTime = resultSet.getLong("FIRST_FOUND_TIME");
-        long lastFoundTime = resultSet.getLong("LAST_FOUND_TIME");
-        long sessionCount = resultSet.getLong("SESSION_COUNT");
-        long bytesSum = resultSet.getLong("BYTES_SUM");
-        String ipType = resultSet.getString("ip_type");
-        newDoc.setKey(ip);
-        newDoc.addAttribute("IP", ip);
-        newDoc.addAttribute("FIRST_FOUND_TIME", firstFoundTime);
-        newDoc.addAttribute("LAST_FOUND_TIME", lastFoundTime);
-        switch (ipType) {
-            case "client":
-                newDoc.addAttribute("CLIENT_SESSION_COUNT", sessionCount);
-                newDoc.addAttribute("CLIENT_BYTES_SUM", bytesSum);
-                newDoc.addAttribute("SERVER_SESSION_COUNT", 0L);
-                newDoc.addAttribute("SERVER_BYTES_SUM", 0L);
-                break;
-            case "server":
-                newDoc.addAttribute("SERVER_SESSION_COUNT", sessionCount);
-                newDoc.addAttribute("SERVER_BYTES_SUM", bytesSum);
-                newDoc.addAttribute("CLIENT_SESSION_COUNT", 0L);
-                newDoc.addAttribute("CLIENT_BYTES_SUM", 0L);
-                break;
-            default:
-        }
-        newDoc.addAttribute("COMMON_LINK_INFO", "");
-        return newDoc;
-    }
-
-    public static BaseDocument getVertexSubscriberDocument(ResultSet resultSet) throws SQLException {
-        String subscriberId = resultSet.getString("common_subscriber_id");
-        long lastFoundTime = resultSet.getLong("LAST_FOUND_TIME");
-        long firstFoundTime = resultSet.getLong("FIRST_FOUND_TIME");
-        BaseDocument newDoc = new BaseDocument();
-        newDoc.setKey(subscriberId);
-        newDoc.addAttribute("FIRST_FOUND_TIME", firstFoundTime);
-        newDoc.addAttribute("LAST_FOUND_TIME", lastFoundTime);
-        return newDoc;
-    }
-
-    public static BaseEdgeDocument getRelationshipSubsciberLocateIpDocument(ResultSet resultSet) throws SQLException {
-        String subscriberId = resultSet.getString("common_subscriber_id");
-        String framedIp = resultSet.getString("radius_framed_ip");
-        long firstFoundTime = resultSet.getLong("FIRST_FOUND_TIME");
-        long lastFoundTime = resultSet.getLong("LAST_FOUND_TIME");
-        long countTotal = resultSet.getLong("COUNT_TOTAL");
-
-        String key = subscriberId + "-" + framedIp;
-        BaseEdgeDocument newDoc = new BaseEdgeDocument();
-        newDoc.setKey(key);
-        newDoc.setFrom("SUBSCRIBER/" + subscriberId);
-        newDoc.setTo("IP/" + framedIp);
-        newDoc.addAttribute("FIRST_FOUND_TIME", firstFoundTime);
-        newDoc.addAttribute("LAST_FOUND_TIME", lastFoundTime);
-        newDoc.addAttribute("COUNT_TOTAL", countTotal);
-
-        return newDoc;
-
-    }
-
-    public static BaseEdgeDocument getRelationFqdnAddressIpDocument(ResultSet resultSet) throws SQLException {
-        String vFqdn = resultSet.getString("FQDN");
-        BaseEdgeDocument newDoc = null;
-        if (isDomain(vFqdn)) {
-            String vIp = resultSet.getString("common_server_ip");
-            long firstFoundTime = resultSet.getLong("FIRST_FOUND_TIME");
-            long lastFoundTime = resultSet.getLong("LAST_FOUND_TIME");
-            long countTotal = resultSet.getLong("COUNT_TOTAL");
-            String schemaType = resultSet.getString("schema_type");
-            String[] distCipRecents = (String[]) resultSet.getArray("DIST_CIP_RECENT").getArray();
-            long[] clientIpTs = new long[distCipRecents.length];
-            for (int i = 0; i < clientIpTs.length; i++) {
-                clientIpTs[i] = currentHour;
+        try {
+            String fqdnName = resultSet.getString("FQDN");
+            if (isDomain(fqdnName)) {
+                long firstFoundTime = resultSet.getLong("FIRST_FOUND_TIME");
+                long lastFoundTime = resultSet.getLong("LAST_FOUND_TIME");
+                newDoc = new BaseDocument();
+                newDoc.setKey(fqdnName);
+                newDoc.addAttribute("FQDN_NAME", fqdnName);
+                newDoc.addAttribute("FIRST_FOUND_TIME", firstFoundTime);
+                newDoc.addAttribute("LAST_FOUND_TIME", lastFoundTime);
             }
-
-            String key = vFqdn + "-" + vIp;
-            newDoc = new BaseEdgeDocument();
-            newDoc.setKey(key);
-            newDoc.setFrom("FQDN/" + vFqdn);
-            newDoc.setTo("IP/" + vIp);
-            newDoc.addAttribute("FIRST_FOUND_TIME", firstFoundTime);
-            newDoc.addAttribute("LAST_FOUND_TIME", lastFoundTime);
-            newDoc.addAttribute("DIST_CIP", distCipRecents);
-            newDoc.addAttribute("DIST_CIP_TS", clientIpTs);
-            newDoc.addAttribute("PROTOCOL_TYPE", schemaType);
-            checkSchemaProperty(newDoc, schemaType, countTotal);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         return newDoc;
     }
 
-    public static BaseEdgeDocument getRelationIpVisitFqdnDocument(ResultSet resultSet) throws SQLException {
-        BaseEdgeDocument newDoc = null;
-        String vFqdn = resultSet.getString("FQDN");
-        if (isDomain(vFqdn)) {
-            String vIp = resultSet.getString("common_client_ip");
-            String key = vIp + "-" + vFqdn;
+    public static BaseDocument getVertexIpDocument(ResultSet resultSet) {
+        BaseDocument newDoc = new BaseDocument();
+        try {
+            String ip = resultSet.getString("IP");
+            long firstFoundTime = resultSet.getLong("FIRST_FOUND_TIME");
+            long lastFoundTime = resultSet.getLong("LAST_FOUND_TIME");
+            long sessionCount = resultSet.getLong("SESSION_COUNT");
+            long bytesSum = resultSet.getLong("BYTES_SUM");
+            String ipType = resultSet.getString("ip_type");
+            newDoc.setKey(ip);
+            newDoc.addAttribute("IP", ip);
+            newDoc.addAttribute("FIRST_FOUND_TIME", firstFoundTime);
+            newDoc.addAttribute("LAST_FOUND_TIME", lastFoundTime);
+            switch (ipType) {
+                case "client":
+                    newDoc.addAttribute("CLIENT_SESSION_COUNT", sessionCount);
+                    newDoc.addAttribute("CLIENT_BYTES_SUM", bytesSum);
+                    newDoc.addAttribute("SERVER_SESSION_COUNT", 0L);
+                    newDoc.addAttribute("SERVER_BYTES_SUM", 0L);
+                    break;
+                case "server":
+                    newDoc.addAttribute("SERVER_SESSION_COUNT", sessionCount);
+                    newDoc.addAttribute("SERVER_BYTES_SUM", bytesSum);
+                    newDoc.addAttribute("CLIENT_SESSION_COUNT", 0L);
+                    newDoc.addAttribute("CLIENT_BYTES_SUM", 0L);
+                    break;
+                default:
+            }
+            newDoc.addAttribute("COMMON_LINK_INFO", "");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return newDoc;
+    }
+
+    public static BaseDocument getVertexSubscriberDocument(ResultSet resultSet) {
+        BaseDocument newDoc = new BaseDocument();
+        try {
+            String subscriberId = resultSet.getString("common_subscriber_id");
+            long lastFoundTime = resultSet.getLong("LAST_FOUND_TIME");
+            long firstFoundTime = resultSet.getLong("FIRST_FOUND_TIME");
+            newDoc.setKey(subscriberId);
+            newDoc.addAttribute("FIRST_FOUND_TIME", firstFoundTime);
+            newDoc.addAttribute("LAST_FOUND_TIME", lastFoundTime);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return newDoc;
+    }
+
+    public static BaseEdgeDocument getRelationshipSubsciberLocateIpDocument(ResultSet resultSet) {
+        BaseEdgeDocument newDoc = new BaseEdgeDocument();
+        try {
+            String subscriberId = resultSet.getString("common_subscriber_id");
+            String framedIp = resultSet.getString("radius_framed_ip");
             long firstFoundTime = resultSet.getLong("FIRST_FOUND_TIME");
             long lastFoundTime = resultSet.getLong("LAST_FOUND_TIME");
             long countTotal = resultSet.getLong("COUNT_TOTAL");
-            String schemaType = resultSet.getString("schema_type");
 
-            newDoc = new BaseEdgeDocument();
+            String key = subscriberId + "-" + framedIp;
             newDoc.setKey(key);
-            newDoc.setFrom("IP/" + vIp);
-            newDoc.setTo("FQDN/" + vFqdn);
+            newDoc.setFrom("SUBSCRIBER/" + subscriberId);
+            newDoc.setTo("IP/" + framedIp);
             newDoc.addAttribute("FIRST_FOUND_TIME", firstFoundTime);
             newDoc.addAttribute("LAST_FOUND_TIME", lastFoundTime);
-            newDoc.addAttribute("PROTOCOL_TYPE", schemaType);
-            checkSchemaProperty(newDoc, schemaType, countTotal);
+            newDoc.addAttribute("COUNT_TOTAL", countTotal);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return newDoc;
+
+    }
+
+    public static BaseEdgeDocument getRelationFqdnAddressIpDocument(ResultSet resultSet) {
+        BaseEdgeDocument newDoc = null;
+        try {
+            String vFqdn = resultSet.getString("FQDN");
+            if (isDomain(vFqdn)) {
+                String vIp = resultSet.getString("common_server_ip");
+                long firstFoundTime = resultSet.getLong("FIRST_FOUND_TIME");
+                long lastFoundTime = resultSet.getLong("LAST_FOUND_TIME");
+                long countTotal = resultSet.getLong("COUNT_TOTAL");
+                String schemaType = resultSet.getString("schema_type");
+                String[] distCipRecents = (String[]) resultSet.getArray("DIST_CIP_RECENT").getArray();
+                long[] clientIpTs = new long[distCipRecents.length];
+                for (int i = 0; i < clientIpTs.length; i++) {
+                    clientIpTs[i] = currentHour;
+                }
+
+                String key = vFqdn + "-" + vIp;
+                newDoc = new BaseEdgeDocument();
+                newDoc.setKey(key);
+                newDoc.setFrom("FQDN/" + vFqdn);
+                newDoc.setTo("IP/" + vIp);
+                newDoc.addAttribute("FIRST_FOUND_TIME", firstFoundTime);
+                newDoc.addAttribute("LAST_FOUND_TIME", lastFoundTime);
+                newDoc.addAttribute("DIST_CIP", distCipRecents);
+                newDoc.addAttribute("DIST_CIP_TS", clientIpTs);
+                newDoc.addAttribute("PROTOCOL_TYPE", schemaType);
+                checkSchemaProperty(newDoc, schemaType, countTotal);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return newDoc;
+    }
+
+    public static BaseEdgeDocument getRelationIpVisitFqdnDocument(ResultSet resultSet) {
+        BaseEdgeDocument newDoc = null;
+        try {
+            String vFqdn = resultSet.getString("FQDN");
+            if (isDomain(vFqdn)) {
+                String vIp = resultSet.getString("common_client_ip");
+                String key = vIp + "-" + vFqdn;
+                long firstFoundTime = resultSet.getLong("FIRST_FOUND_TIME");
+                long lastFoundTime = resultSet.getLong("LAST_FOUND_TIME");
+                long countTotal = resultSet.getLong("COUNT_TOTAL");
+                String schemaType = resultSet.getString("schema_type");
+
+                newDoc = new BaseEdgeDocument();
+                newDoc.setKey(key);
+                newDoc.setFrom("IP/" + vIp);
+                newDoc.setTo("FQDN/" + vFqdn);
+                newDoc.addAttribute("FIRST_FOUND_TIME", firstFoundTime);
+                newDoc.addAttribute("LAST_FOUND_TIME", lastFoundTime);
+                newDoc.addAttribute("PROTOCOL_TYPE", schemaType);
+                checkSchemaProperty(newDoc, schemaType, countTotal);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         return newDoc;
     }
@@ -166,8 +191,8 @@ public class ReadClickhouseData {
     public static <T extends BaseDocument> void putMapByHashcode(T newDoc, HashMap<Integer, HashMap<String, ArrayList<T>>> map) {
         if (newDoc != null) {
             String key = newDoc.getKey();
-            int i = Math.abs(key.hashCode()) % ApplicationConfig.THREAD_POOL_NUMBER;
-            HashMap<String, ArrayList<T>> documentHashMap = map.getOrDefault(i, new HashMap<>());
+            int hashCode = Math.abs(key.hashCode()) % ApplicationConfig.THREAD_POOL_NUMBER;
+            HashMap<String, ArrayList<T>> documentHashMap = map.getOrDefault(hashCode, new HashMap<>());
             ArrayList<T> documentArrayList = documentHashMap.getOrDefault(key, new ArrayList<>());
             documentArrayList.add(newDoc);
             documentHashMap.put(key, documentArrayList);
@@ -176,6 +201,15 @@ public class ReadClickhouseData {
 
     private static boolean isDomain(String fqdn) {
         try {
+            if (fqdn == null || fqdn.length() == 0){
+                return false;
+            }
+            if (fqdn.contains(":")){
+                String s = fqdn.split(":")[0];
+                if (s.contains(":")){
+                    return false;
+                }
+            }
             String[] fqdnArr = fqdn.split("\\.");
             if (fqdnArr.length < 4 || fqdnArr.length > 4) {
                 return true;
@@ -183,7 +217,7 @@ public class ReadClickhouseData {
 
             for (String f : fqdnArr) {
                 if (pattern.matcher(f).matches()) {
-                    int i = Integer.parseInt(f);
+                    long i = Long.parseLong(f);
                     if (i < 0 || i > 255) {
                         return true;
                     }
@@ -198,23 +232,22 @@ public class ReadClickhouseData {
     }
 
     private static void checkSchemaProperty(BaseEdgeDocument newDoc, String schema, long countTotal) {
-        long[] recentCnt = new long[24];
+        long[] recentCnt = new long[RECENT_COUNT_HOUR];
         recentCnt[0] = countTotal;
-        for (String protocol:protocolSet){
-            String protocolRecent = protocol +"_CNT_RECENT";
-            String protocolTotal  = protocol + "_CNT_TOTAL";
-            if (protocol.equals(schema)){
+        for (String protocol : PROTOCOL_SET) {
+            String protocolRecent = protocol + "_CNT_RECENT";
+            String protocolTotal = protocol + "_CNT_TOTAL";
+            if (protocol.equals(schema)) {
                 newDoc.addAttribute(protocolTotal, countTotal);
                 newDoc.addAttribute(protocolRecent, recentCnt);
-            }else {
+            } else {
                 newDoc.addAttribute(protocolTotal, 0L);
-                newDoc.addAttribute(protocolRecent, new long[24]);
+                newDoc.addAttribute(protocolRecent, new long[RECENT_COUNT_HOUR]);
             }
         }
     }
 
     public static String getVertexFqdnSql() {
-        long[] timeLimit = getTimeLimit();
         long maxTime = timeLimit[0];
         long minTime = timeLimit[1];
         String where = "common_recv_time >= " + minTime + " AND common_recv_time < " + maxTime;
@@ -224,7 +257,6 @@ public class ReadClickhouseData {
     }
 
     public static String getVertexIpSql() {
-        long[] timeLimit = getTimeLimit();
         long maxTime = timeLimit[0];
         long minTime = timeLimit[1];
         String where = " common_recv_time >= " + minTime + " AND common_recv_time < " + maxTime;
@@ -234,17 +266,15 @@ public class ReadClickhouseData {
     }
 
     public static String getRelationshipFqdnAddressIpSql() {
-        long[] timeLimit = getTimeLimit();
         long maxTime = timeLimit[0];
         long minTime = timeLimit[1];
         String where = " common_recv_time >= " + minTime + " AND common_recv_time < " + maxTime;
-        String sslSql = "SELECT ssl_sni AS FQDN,common_server_ip,MAX(common_recv_time) AS LAST_FOUND_TIME,MIN(common_recv_time) AS FIRST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL,groupUniqArray(10000)(common_client_ip) AS DIST_CIP_RECENT,'TLS' AS  schema_type FROM tsg_galaxy_v3.connection_record_log WHERE " + where + " and common_schema_type = 'SSL' GROUP BY ssl_sni,common_server_ip";
-        String httpSql = "SELECT http_host AS FQDN,common_server_ip,MAX(common_recv_time) AS LAST_FOUND_TIME,MIN(common_recv_time) AS FIRST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL,groupUniqArray(10000)(common_client_ip) AS DIST_CIP_RECENT,'HTTP' AS schema_type FROM tsg_galaxy_v3.connection_record_log WHERE " + where + " and common_schema_type = 'HTTP' GROUP BY http_host,common_server_ip";
+        String sslSql = "SELECT ssl_sni AS FQDN,common_server_ip,MAX(common_recv_time) AS LAST_FOUND_TIME,MIN(common_recv_time) AS FIRST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL,groupUniqArray("+DISTINCT_CLIENT_IP_NUM+")(common_client_ip) AS DIST_CIP_RECENT,'TLS' AS  schema_type FROM tsg_galaxy_v3.connection_record_log WHERE " + where + " and common_schema_type = 'SSL' GROUP BY ssl_sni,common_server_ip";
+        String httpSql = "SELECT http_host AS FQDN,common_server_ip,MAX(common_recv_time) AS LAST_FOUND_TIME,MIN(common_recv_time) AS FIRST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL,groupUniqArray("+DISTINCT_CLIENT_IP_NUM+")(common_client_ip) AS DIST_CIP_RECENT,'HTTP' AS schema_type FROM tsg_galaxy_v3.connection_record_log WHERE " + where + " and common_schema_type = 'HTTP' GROUP BY http_host,common_server_ip";
         return "SELECT * FROM ((" + sslSql + ") UNION ALL (" + httpSql + "))WHERE FQDN != ''";
     }
 
     public static String getRelationshipIpVisitFqdnSql() {
-        long[] timeLimit = getTimeLimit();
         long maxTime = timeLimit[0];
         long minTime = timeLimit[1];
         String where = " common_recv_time >= " + minTime + " AND common_recv_time < " + maxTime;
@@ -254,7 +284,6 @@ public class ReadClickhouseData {
     }
 
     public static String getVertexSubscriberSql() {
-        long[] timeLimit = getTimeLimit();
         long maxTime = timeLimit[0];
         long minTime = timeLimit[1];
         String where = " common_recv_time >= " + minTime + " AND common_recv_time < " + maxTime + " AND common_subscriber_id != '' AND radius_packet_type = 4 AND radius_acct_status_type = 1";
@@ -262,7 +291,6 @@ public class ReadClickhouseData {
     }
 
     public static String getRelationshipSubsciberLocateIpSql() {
-        long[] timeLimit = getTimeLimit();
         long maxTime = timeLimit[0];
         long minTime = timeLimit[1];
         String where = " common_recv_time >= " + minTime + " AND common_recv_time < " + maxTime + " AND common_subscriber_id != '' AND radius_framed_ip != '' AND radius_packet_type = 4 AND radius_acct_status_type = 1";
@@ -270,10 +298,19 @@ public class ReadClickhouseData {
     }
 
     private static long[] getTimeLimit() {
-        long maxTime = currentHour;
-        long minTime = maxTime - 3600;
-//        long maxTime = ApplicationConfig.READ_CLICKHOUSE_MAX_TIME;
-//        long minTime = ApplicationConfig.READ_CLICKHOUSE_MIN_TIME;
+        long maxTime = 0L;
+        long minTime = 0L;
+        switch (ApplicationConfig.TIME_LIMIT_TYPE) {
+            case 0:
+                maxTime = currentHour;
+                minTime = maxTime - ApplicationConfig.UPDATE_INTERVAL;
+                break;
+            case 1:
+                maxTime = ApplicationConfig.READ_CLICKHOUSE_MAX_TIME;
+                minTime = ApplicationConfig.READ_CLICKHOUSE_MIN_TIME;
+                break;
+            default:
+        }
         return new long[]{maxTime, minTime};
     }
 
