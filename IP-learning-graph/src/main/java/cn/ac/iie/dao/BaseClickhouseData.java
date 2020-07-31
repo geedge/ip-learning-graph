@@ -35,7 +35,9 @@ public class BaseClickhouseData {
     private DruidPooledConnection connection;
     private Statement statement;
 
-    <T extends BaseDocument> void baseDocumentFromClickhouse(HashMap<Integer, HashMap<String, ArrayList<T>>> newMap, Supplier<String> getSqlSupplier, Function<ResultSet,T> formatResultFunc){
+    <T extends BaseDocument> void baseDocumentFromClickhouse(HashMap<Integer, HashMap<String, ArrayList<T>>> newMap,
+                                                             Supplier<String> getSqlSupplier,
+                                                             Function<ResultSet,T> formatResultFunc) {
         long start = System.currentTimeMillis();
         initializeMap(newMap);
         String sql = getSqlSupplier.get();

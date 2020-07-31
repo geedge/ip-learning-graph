@@ -53,12 +53,12 @@ public class LocateFqdn2Ip extends Relationship {
     }
 
     private void updateDistinctClientIp(BaseEdgeDocument newEdgeDocument,BaseEdgeDocument edgeDocument){
-        ArrayList<String> distCip = (ArrayList<String>) edgeDocument.getAttribute("DIST_CIP");
-        ArrayList<Long> distCipTs = (ArrayList<Long>) edgeDocument.getAttribute("DIST_CIP_TS");
+        String[] distCip = (String[]) edgeDocument.getAttribute("DIST_CIP");
+        long[] distCipTs = (long[]) edgeDocument.getAttribute("DIST_CIP_TS");
         HashMap<String, Long> distCipToTs = new HashMap<>();
-        if (distCip.size() == distCipTs.size()){
-            for (int i = 0;i < distCip.size();i++){
-                distCipToTs.put(distCip.get(i),distCipTs.get(i));
+        if (distCip.length == distCipTs.length){
+            for (int i = 0;i < distCip.length;i++){
+                distCipToTs.put(distCip[i],distCipTs[i]);
             }
         }
         Object[] distCipRecent = (Object[])newEdgeDocument.getAttribute("DIST_CIP");

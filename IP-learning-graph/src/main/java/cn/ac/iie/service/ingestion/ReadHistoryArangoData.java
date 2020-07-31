@@ -8,11 +8,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
-import static cn.ac.iie.service.ingestion.ReadClickhouseData.RECENT_COUNT_HOUR;
+import static cn.ac.iie.service.ingestion.ReadClickhouseData.*;
 
 /**
  * @author wlh
@@ -23,14 +24,14 @@ public class ReadHistoryArangoData<T extends BaseDocument> extends Thread {
 
     private ArangoDBConnect arangoConnect;
     private String query;
-    private ConcurrentHashMap<Integer,ConcurrentHashMap<String, T>> map;
+    private ConcurrentHashMap<Integer, ConcurrentHashMap<String, T>> map;
     private Class<T> type;
     private String table;
     private CountDownLatch countDownLatch;
 
     public ReadHistoryArangoData(ArangoDBConnect arangoConnect,
                                  String query,
-                                 ConcurrentHashMap<Integer,ConcurrentHashMap<String, T>> map,
+                                 ConcurrentHashMap<Integer, ConcurrentHashMap<String, T>> map,
                                  Class<T> type,
                                  String table,
                                  CountDownLatch countDownLatch) {
@@ -55,6 +56,7 @@ public class ReadHistoryArangoData<T extends BaseDocument> extends Thread {
                     switch (table) {
                         case "R_LOCATE_FQDN2IP":
                             updateProtocolDocument(doc);
+                            deleteDistinctClientIpByTime(doc);
                             break;
                         case "R_VISIT_IP2FQDN":
                             updateProtocolDocument(doc);
@@ -69,11 +71,11 @@ public class ReadHistoryArangoData<T extends BaseDocument> extends Thread {
                 long l = System.currentTimeMillis();
                 LOG.info(query + "\n读取" + i + "条数据，运行时间：" + (l - s));
             }
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
-        }finally {
+        } finally {
             countDownLatch.countDown();
-            LOG.info("本线程读取完毕，剩余线程数量："+countDownLatch.getCount());
+            LOG.info("本线程读取完毕，剩余线程数量：" + countDownLatch.getCount());
         }
     }
 
@@ -89,6 +91,24 @@ public class ReadHistoryArangoData<T extends BaseDocument> extends Thread {
                 doc.addAttribute(protocolRecent, cntRecentsDst);
             }
         }
+    }
+
+    private void deleteDistinctClientIpByTime(T doc) {
+        ArrayList<String> distCip = (ArrayList<String>) doc.getAttribute("DIST_CIP");
+        ArrayList<Long> distCipTs = (ArrayList<Long>) doc.getAttribute("DIST_CIP_TS");
+        distCipTs.add(currentHour - RECENT_COUNT_HOUR * 3600);
+        Collections.sort(distCipTs);
+        int index = distCipTs.indexOf(currentHour - RECENT_COUNT_HOUR * 3600);
+        String[] distCipArr = new String[index];
+        long[] disCipTsArr = new long[index];
+        if (distCip.size() + 1 == distCipTs.size()){
+            for (int i = 0; i < index; i++) {
+                distCipArr[i] = distCip.get(i);
+                disCipTsArr[i] = distCipTs.get(i);
+            }
+        }
+        doc.updateAttribute("DIST_CIP", distCipArr);
+        doc.updateAttribute("DIST_CIP_TS", disCipTsArr);
     }
 
 }

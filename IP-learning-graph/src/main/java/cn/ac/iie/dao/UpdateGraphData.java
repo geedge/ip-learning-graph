@@ -60,9 +60,9 @@ public class UpdateGraphData {
                     LocateFqdn2Ip.class,BaseEdgeDocument.class,
                     ReadClickhouseData::getRelationshipFqdnAddressIpSql,ReadClickhouseData::getRelationFqdnAddressIpDocument);
 
-            updateDocument(newRelationIpVisitFqdnMap,historyRelationIpVisitFqdnMap,"R_VISIT_IP2FQDN",
-                    VisitIp2Fqdn.class,BaseEdgeDocument.class,
-                    ReadClickhouseData::getRelationshipIpVisitFqdnSql,ReadClickhouseData::getRelationIpVisitFqdnDocument);
+//            updateDocument(newRelationIpVisitFqdnMap,historyRelationIpVisitFqdnMap,"R_VISIT_IP2FQDN",
+//                    VisitIp2Fqdn.class,BaseEdgeDocument.class,
+//                    ReadClickhouseData::getRelationshipIpVisitFqdnSql,ReadClickhouseData::getRelationIpVisitFqdnDocument);
 
             updateDocument(newRelationSubsciberLocateIpMap,historyRelationSubsciberLocateIpMap,"R_LOCATE_SUBSCRIBER2IP",
                     LocateSubscriber2Ip.class,BaseEdgeDocument.class,
@@ -106,7 +106,7 @@ public class UpdateGraphData {
                         String.class,
                         ConcurrentHashMap.class,
                         CountDownLatch.class);
-                Document<T> docTask = (Document<T>)constructor.newInstance(tmpNewMap, arangoManger, collection, tmpHisMap, countDownLatch);
+                Document docTask = (Document)constructor.newInstance(tmpNewMap, arangoManger, collection, tmpHisMap, countDownLatch);
                 pool.executor(docTask);
             }
             countDownLatch.await();

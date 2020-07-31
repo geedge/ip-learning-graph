@@ -23,9 +23,11 @@ public class ReadClickhouseData {
     private static final Logger LOG = LoggerFactory.getLogger(ReadClickhouseData.class);
 
     private static long[] timeLimit = getTimeLimit();
+    private static long maxTime = timeLimit[0];
+    private static long minTime = timeLimit[1];
 
     public static final Integer DISTINCT_CLIENT_IP_NUM = ApplicationConfig.DISTINCT_CLIENT_IP_NUM;
-    public static final Integer RECENT_COUNT_HOUR = ApplicationConfig.RECENT_COUNT_HOUR;
+    static final Integer RECENT_COUNT_HOUR = ApplicationConfig.RECENT_COUNT_HOUR;
     public static final HashSet<String> PROTOCOL_SET;
 
     static {
@@ -248,8 +250,6 @@ public class ReadClickhouseData {
     }
 
     public static String getVertexFqdnSql() {
-        long maxTime = timeLimit[0];
-        long minTime = timeLimit[1];
         String where = "common_recv_time >= " + minTime + " AND common_recv_time < " + maxTime;
         String sslSql = "SELECT ssl_sni AS FQDN,MAX( common_recv_time ) AS LAST_FOUND_TIME,MIN( common_recv_time ) AS FIRST_FOUND_TIME FROM tsg_galaxy_v3.connection_record_log WHERE " + where + " and common_schema_type = 'SSL' GROUP BY ssl_sni";
         String httpSql = "SELECT http_host AS FQDN,MAX( common_recv_time ) AS LAST_FOUND_TIME,MIN( common_recv_time ) AS FIRST_FOUND_TIME FROM tsg_galaxy_v3.connection_record_log WHERE " + where + " and common_schema_type = 'HTTP' GROUP BY http_host";
@@ -257,8 +257,6 @@ public class ReadClickhouseData {
     }
 
     public static String getVertexIpSql() {
-        long maxTime = timeLimit[0];
-        long minTime = timeLimit[1];
         String where = " common_recv_time >= " + minTime + " AND common_recv_time < " + maxTime;
         String clientIpSql = "SELECT common_client_ip AS IP, MIN(common_recv_time) AS FIRST_FOUND_TIME,MAX(common_recv_time) AS LAST_FOUND_TIME,count(*) as SESSION_COUNT,sum(common_c2s_byte_num) as BYTES_SUM,'client' as ip_type FROM tsg_galaxy_v3.connection_record_log where " + where + " group by IP";
         String serverIpSql = "SELECT common_server_ip AS IP, MIN(common_recv_time) AS FIRST_FOUND_TIME,MAX(common_recv_time) AS LAST_FOUND_TIME,count(*) as SESSION_COUNT,sum(common_s2c_byte_num) as BYTES_SUM,'server' as ip_type FROM tsg_galaxy_v3.connection_record_log where " + where + " group by IP";
@@ -266,8 +264,6 @@ public class ReadClickhouseData {
     }
 
     public static String getRelationshipFqdnAddressIpSql() {
-        long maxTime = timeLimit[0];
-        long minTime = timeLimit[1];
         String where = " common_recv_time >= " + minTime + " AND common_recv_time < " + maxTime;
         String sslSql = "SELECT ssl_sni AS FQDN,common_server_ip,MAX(common_recv_time) AS LAST_FOUND_TIME,MIN(common_recv_time) AS FIRST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL,groupUniqArray("+DISTINCT_CLIENT_IP_NUM+")(common_client_ip) AS DIST_CIP_RECENT,'TLS' AS  schema_type FROM tsg_galaxy_v3.connection_record_log WHERE " + where + " and common_schema_type = 'SSL' GROUP BY ssl_sni,common_server_ip";
         String httpSql = "SELECT http_host AS FQDN,common_server_ip,MAX(common_recv_time) AS LAST_FOUND_TIME,MIN(common_recv_time) AS FIRST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL,groupUniqArray("+DISTINCT_CLIENT_IP_NUM+")(common_client_ip) AS DIST_CIP_RECENT,'HTTP' AS schema_type FROM tsg_galaxy_v3.connection_record_log WHERE " + where + " and common_schema_type = 'HTTP' GROUP BY http_host,common_server_ip";
@@ -275,8 +271,6 @@ public class ReadClickhouseData {
     }
 
     public static String getRelationshipIpVisitFqdnSql() {
-        long maxTime = timeLimit[0];
-        long minTime = timeLimit[1];
         String where = " common_recv_time >= " + minTime + " AND common_recv_time < " + maxTime;
         String httpSql = "SELECT http_host AS FQDN,common_client_ip,MAX(common_recv_time) AS LAST_FOUND_TIME,MIN(common_recv_time) AS FIRST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL,'HTTP' AS schema_type FROM tsg_galaxy_v3.connection_record_log WHERE " + where + " and common_schema_type = 'HTTP' GROUP BY http_host,common_client_ip";
         String sslSql = "SELECT ssl_sni AS FQDN,common_client_ip,MAX(common_recv_time) AS LAST_FOUND_TIME,MIN(common_recv_time) AS FIRST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL,'TLS' AS schema_type FROM tsg_galaxy_v3.connection_record_log WHERE common_schema_type = 'SSL' GROUP BY ssl_sni,common_client_ip";
@@ -284,15 +278,11 @@ public class ReadClickhouseData {
     }
 
     public static String getVertexSubscriberSql() {
-        long maxTime = timeLimit[0];
-        long minTime = timeLimit[1];
         String where = " common_recv_time >= " + minTime + " AND common_recv_time < " + maxTime + " AND common_subscriber_id != '' AND radius_packet_type = 4 AND radius_acct_status_type = 1";
         return "SELECT common_subscriber_id,MAX(common_recv_time) as LAST_FOUND_TIME,MIN(common_recv_time) as FIRST_FOUND_TIME FROM radius_record_log WHERE" + where + " GROUP BY common_subscriber_id";
     }
 
     public static String getRelationshipSubsciberLocateIpSql() {
-        long maxTime = timeLimit[0];
-        long minTime = timeLimit[1];
         String where = " common_recv_time >= " + minTime + " AND common_recv_time < " + maxTime + " AND common_subscriber_id != '' AND radius_framed_ip != '' AND radius_packet_type = 4 AND radius_acct_status_type = 1";
         return "SELECT common_subscriber_id,radius_framed_ip,MAX(common_recv_time) as LAST_FOUND_TIME,MIN(common_recv_time) as FIRST_FOUND_TIME,COUNT(*) as COUNT_TOTAL FROM radius_record_log WHERE" + where + " GROUP BY common_subscriber_id,radius_framed_ip";
     }

@@ -31,7 +31,9 @@ public class BaseArangoData {
 
     private ExecutorThreadPool threadPool = ExecutorThreadPool.getInstance();
 
-    <T extends BaseDocument> void readHistoryData(String table,ConcurrentHashMap<Integer,ConcurrentHashMap<String, T>> map,Class<T> type){
+    <T extends BaseDocument> void readHistoryData(String table,
+                                                  ConcurrentHashMap<Integer,ConcurrentHashMap<String, T>> map,
+                                                  Class<T> type) {
         try {
             LOG.info("开始更新"+table);
             long start = System.currentTimeMillis();
@@ -42,7 +44,8 @@ public class BaseArangoData {
             long[] timeRange = getTimeRange(table);
             for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
                 String sql = getQuerySql(timeRange, i, table);
-                ReadHistoryArangoData<T> readHistoryArangoData = new ReadHistoryArangoData<>(arangoDBConnect, sql, map,type,table,countDownLatch);
+                ReadHistoryArangoData<T> readHistoryArangoData =
+                        new ReadHistoryArangoData<>(arangoDBConnect, sql, map,type,table,countDownLatch);
                 threadPool.executor(readHistoryArangoData);
             }
             countDownLatch.await();
