@@ -21,11 +21,19 @@ public class ApplicationConfig {
     public static final Long READ_CLICKHOUSE_MAX_TIME = ConfigUtils.getLongProperty("read.clickhouse.max.time");
     public static final Long READ_CLICKHOUSE_MIN_TIME = ConfigUtils.getLongProperty("read.clickhouse.min.time");
 
-    public static final Integer TIME_LIMIT_TYPE = ConfigUtils.getIntProperty("time.limit.type");
+    public static final Integer CLICKHOUSE_TIME_LIMIT_TYPE = ConfigUtils.getIntProperty("clickhouse.time.limit.type");
     public static final Integer UPDATE_INTERVAL = ConfigUtils.getIntProperty("update.interval");
 
     public static final Integer DISTINCT_CLIENT_IP_NUM = ConfigUtils.getIntProperty("distinct.client.ip.num");
     public static final Integer RECENT_COUNT_HOUR = ConfigUtils.getIntProperty("recent.count.hour");
 
+    public static final String TOP_DOMAIN_FILE_NAME = ConfigUtils.getStringProperty("top.domain.file.name");
+
+    public static final String ARANGODB_READ_LIMIT = ConfigUtils.getStringProperty("arangoDB.read.limit");
+
+    public static final Integer ARANGO_TIME_LIMIT_TYPE = ConfigUtils.getIntProperty("arango.time.limit.type");
+
+    public static final Long READ_ARANGO_MAX_TIME = ConfigUtils.getLongProperty("read.arango.max.time");
+    public static final Long READ_ARANGO_MIN_TIME = ConfigUtils.getLongProperty("read.arango.min.time");
 
 }

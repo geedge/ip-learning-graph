@@ -25,8 +25,10 @@ public class ReadClickhouseData {
 
 
     private static long[] timeLimit = getTimeLimit();
+    private static long maxTime = timeLimit[0];
+    private static long minTime = timeLimit[1];
     public static final Integer DISTINCT_CLIENT_IP_NUM = ApplicationConfig.DISTINCT_CLIENT_IP_NUM;
-    public static final Integer RECENT_COUNT_HOUR = ApplicationConfig.RECENT_COUNT_HOUR;
+    static final Integer RECENT_COUNT_HOUR = ApplicationConfig.RECENT_COUNT_HOUR;
     public static final HashSet<String> PROTOCOL_SET;
 
     static {
@@ -278,8 +280,6 @@ public class ReadClickhouseData {
     }
 
     public static String getVertexFqdnSql() {
-        long maxTime = timeLimit[0];
-        long minTime = timeLimit[1];
         String where = "recv_time >= "+minTime+" and recv_time <= "+maxTime;
         String mediaDomainSql = "SELECT s1_domain AS FQDN,MIN(recv_time) AS FIRST_FOUND_TIME,MAX(recv_time) AS LAST_FOUND_TIME FROM media_expire_patch WHERE "+where+" and s1_domain != '' GROUP BY s1_domain";
         String refererSql = "SELECT s1_referer AS FQDN,MIN(recv_time) AS FIRST_FOUND_TIME,MAX(recv_time) AS LAST_FOUND_TIME FROM media_expire_patch WHERE "+where+" and s1_referer != '' GROUP BY s1_referer";
@@ -287,8 +287,6 @@ public class ReadClickhouseData {
     }
 
     public static String getVertexIpSql() {
-        long maxTime = timeLimit[0];
-        long minTime = timeLimit[1];
         String where = " recv_time >= " + minTime + " AND recv_time < " + maxTime;
         String clientIpSql = "SELECT s1_s_ip AS IP, MIN(recv_time) AS FIRST_FOUND_TIME,MAX(recv_time) AS LAST_FOUND_TIME,count(*) as SESSION_COUNT,sum(media_len) as BYTES_SUM,'client' as ip_type FROM media_expire_patch where " + where + " group by IP";
         String serverIpSql = "SELECT s1_d_ip AS IP, MIN(recv_time) AS FIRST_FOUND_TIME,MAX(recv_time) AS LAST_FOUND_TIME,count(*) as SESSION_COUNT,sum(media_len) as BYTES_SUM,'server' as ip_type FROM media_expire_patch where " + where + " group by IP";
@@ -296,36 +294,26 @@ public class ReadClickhouseData {
     }
 
     public static String getRelationshipFqdnAddressIpSql() {
-        long maxTime = timeLimit[0];
-        long minTime = timeLimit[1];
         String where = "recv_time >= "+minTime+" and recv_time <= "+maxTime +" AND s1_domain != '' AND s1_d_ip != '' ";
         return "SELECT s1_domain AS FQDN,s1_d_ip AS common_server_ip,MIN( recv_time ) AS FIRST_FOUND_TIME,MAX( recv_time ) AS LAST_FOUND_TIME,COUNT( * ) AS COUNT_TOTAL,groupUniqArray("+DISTINCT_CLIENT_IP_NUM+")(s1_s_ip) AS DIST_CIP_RECENT FROM media_expire_patch WHERE "+where+" GROUP BY s1_d_ip,s1_domain";
     }
 
     public static String getRelationshipFqdnSameFqdnSql(){
-        long maxTime = timeLimit[0];
-        long minTime = timeLimit[1];
         String where = "recv_time >= "+minTime+" and recv_time <= "+maxTime +" AND s1_domain != '' AND s1_referer != '' ";
         return "SELECT s1_domain AS domainFqdn,s1_referer AS referer,MIN(recv_time) AS FIRST_FOUND_TIME,MAX(recv_time) AS LAST_FOUND_TIME,COUNT(*) AS COUNT_TOTAL FROM media_expire_patch where "+where+" GROUP BY s1_domain,s1_referer";
     }
 
     public static String getRelationshipIpVisitFqdnSql() {
-        long maxTime = timeLimit[0];
-        long minTime = timeLimit[1];
         String where = "recv_time >= "+minTime+" and recv_time <= "+maxTime+" AND s1_s_ip != '' AND s1_domain != '' ";
         return "SELECT s1_s_ip AS common_client_ip,s1_domain AS FQDN,MIN( recv_time ) AS FIRST_FOUND_TIME,MAX( recv_time ) AS LAST_FOUND_TIME,COUNT( * ) AS COUNT_TOTAL FROM media_expire_patch WHERE "+where+" GROUP BY s1_s_ip,s1_domain";
     }
 
     public static String getVertexSubscriberSql() {
-        long maxTime = timeLimit[0];
-        long minTime = timeLimit[1];
         String where = " common_recv_time >= " + minTime + " AND common_recv_time < " + maxTime + " AND common_subscriber_id != '' AND radius_packet_type = 4 AND radius_acct_status_type = 1";
         return "SELECT common_subscriber_id,MAX(common_recv_time) as LAST_FOUND_TIME,MIN(common_recv_time) as FIRST_FOUND_TIME FROM radius_record_log WHERE" + where + " GROUP BY common_subscriber_id";
     }
 
     public static String getRelationshipSubsciberLocateIpSql() {
-        long maxTime = timeLimit[0];
-        long minTime = timeLimit[1];
         String where = " common_recv_time >= " + minTime + " AND common_recv_time < " + maxTime + " AND common_subscriber_id != '' AND radius_framed_ip != '' AND radius_packet_type = 4 AND radius_acct_status_type = 1";
         return "SELECT common_subscriber_id,radius_framed_ip,MAX(common_recv_time) as LAST_FOUND_TIME,MIN(common_recv_time) as FIRST_FOUND_TIME,COUNT(*) as COUNT_TOTAL FROM radius_record_log WHERE" + where + " GROUP BY common_subscriber_id,radius_framed_ip";
     }
@@ -333,7 +321,7 @@ public class ReadClickhouseData {
     private static long[] getTimeLimit() {
         long maxTime = 0L;
         long minTime = 0L;
-        switch (ApplicationConfig.TIME_LIMIT_TYPE) {
+        switch (ApplicationConfig.CLICKHOUSE_TIME_LIMIT_TYPE) {
             case 0:
                 maxTime = currentHour;
                 minTime = maxTime - ApplicationConfig.UPDATE_INTERVAL;

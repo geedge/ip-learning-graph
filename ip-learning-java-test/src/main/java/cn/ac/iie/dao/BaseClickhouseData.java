@@ -36,10 +36,13 @@ public class BaseClickhouseData {
     private DruidPooledConnection connection;
     private Statement statement;
 
-    <T extends BaseDocument> void baseDocumentFromClickhouse(HashMap<Integer, HashMap<String, ArrayList<T>>> newMap, Supplier<String> getSqlSupplier, Function<ResultSet,T> formatResultFunc){
+    <T extends BaseDocument> void baseDocumentFromClickhouse(HashMap<Integer, HashMap<String, ArrayList<T>>> newMap,
+                                                             Supplier<String> getSqlSupplier,
+                                                             Function<ResultSet,T> formatResultFunc){
         long start = System.currentTimeMillis();
         initializeMap(newMap);
         String sql = getSqlSupplier.get();
+        LOG.info(sql);
         try {
             connection = manger.getConnection();
             statement = connection.createStatement();
@@ -53,7 +56,7 @@ public class BaseClickhouseData {
                 }
             }
             long last = System.currentTimeMillis();
-            LOG.info(sql + "\n读取"+i+"条数据，运行时间：" + (last - start));
+            LOG.info("读取"+i+"条数据，运行时间：" + (last - start));
         }catch (Exception e){
             e.printStackTrace();
         }finally {

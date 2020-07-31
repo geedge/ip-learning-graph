@@ -4,12 +4,10 @@ import cn.ac.iie.config.ApplicationConfig;
 import cn.ac.iie.service.read.ReadClickhouseData;
 import cn.ac.iie.service.update.Document;
 import cn.ac.iie.service.update.relationship.LocateFqdn2Ip;
-import cn.ac.iie.service.update.relationship.LocateSubscriber2Ip;
 import cn.ac.iie.service.update.relationship.SameFqdn2Fqdn;
 import cn.ac.iie.service.update.relationship.VisitIp2Fqdn;
 import cn.ac.iie.service.update.vertex.Fqdn;
 import cn.ac.iie.service.update.vertex.Ip;
-import cn.ac.iie.service.update.vertex.Subscriber;
 import cn.ac.iie.utils.ArangoDBConnect;
 import cn.ac.iie.utils.ExecutorThreadPool;
 import com.arangodb.entity.BaseDocument;
@@ -100,7 +98,7 @@ public class UpdateGraphData {
                         String.class,
                         ConcurrentHashMap.class,
                         CountDownLatch.class);
-                Document<T> docTask = (Document<T>)constructor.newInstance(tmpNewMap, arangoManger, collection, tmpHisMap, countDownLatch);
+                Document docTask = (Document)constructor.newInstance(tmpNewMap, arangoManger, collection, tmpHisMap, countDownLatch);
                 pool.executor(docTask);
             }
             countDownLatch.await();
