@@ -87,7 +87,7 @@ public class BaseArangoData {
         long diffTime = (maxTime - minTime) / ApplicationConfig.THREAD_POOL_NUMBER;
         long maxThreadTime = minTime + (threadNumber + 1)* diffTime;
         long minThreadTime = minTime + threadNumber * diffTime;
-        return "FOR doc IN "+table+" filter doc.FIRST_FOUND_TIME >= "+minThreadTime+" and doc.FIRST_FOUND_TIME <= "+maxThreadTime+" RETURN doc";
+        return "FOR doc IN "+table+" filter doc.FIRST_FOUND_TIME >= "+minThreadTime+" and doc.FIRST_FOUND_TIME <= "+maxThreadTime+" " + ApplicationConfig.ARANGODB_READ_LIMIT + " RETURN doc";
     }
 
 }

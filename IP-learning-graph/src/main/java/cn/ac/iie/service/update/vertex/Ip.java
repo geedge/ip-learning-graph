@@ -23,19 +23,13 @@ public class Ip extends Vertex {
     protected void updateFunction(BaseDocument newDocument, BaseDocument historyDocument) {
         super.updateFunction(newDocument, historyDocument);
         updateIpByType(newDocument, historyDocument);
+        super.replaceAttribute(newDocument,historyDocument,"COMMON_LINK_INFO");
     }
 
     @Override
     protected void mergeFunction(BaseDocument lastDoc, BaseDocument newDocument) {
         super.mergeFunction(lastDoc, newDocument);
-        mergeIpByType(lastDoc, newDocument);
-    }
-
-    private void mergeIpByType(BaseDocument lastDoc, BaseDocument newDocument) {
-        putSumAttribute(lastDoc,newDocument,"CLIENT_SESSION_COUNT");
-        putSumAttribute(lastDoc,newDocument,"CLIENT_BYTES_SUM");
-        putSumAttribute(lastDoc,newDocument,"SERVER_SESSION_COUNT");
-        putSumAttribute(lastDoc,newDocument,"SERVER_BYTES_SUM");
+        updateIpByType(lastDoc, newDocument);
     }
 
     private void updateIpByType(BaseDocument newDocument, BaseDocument historyDocument) {

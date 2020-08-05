@@ -124,5 +124,10 @@ public class Document<T extends BaseDocument> extends Thread{
         lastDoc.addAttribute(attribute,firstSumAttribute+lastSumAttribute);
     }
 
+    protected void replaceAttribute(T firstDoc,T lastDoc,String attribute){
+        Object attributeObj = firstDoc.getAttribute(attribute);
+        lastDoc.addAttribute(attribute,attributeObj);
+    }
+
 
 }

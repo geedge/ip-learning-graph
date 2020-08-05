@@ -14,6 +14,7 @@ public class ApplicationConfig {
     public static final Integer ARANGODB_BATCH = ConfigUtils.getIntProperty( "arangoDB.batch");
 
     public static final Integer UPDATE_ARANGO_BATCH = ConfigUtils.getIntProperty("update.arango.batch");
+    public static final String ARANGODB_READ_LIMIT = ConfigUtils.getStringProperty("arangoDB.read.limit");
 
     public static final Integer THREAD_POOL_NUMBER = ConfigUtils.getIntProperty( "thread.pool.number");
     public static final Integer THREAD_AWAIT_TERMINATION_TIME = ConfigUtils.getIntProperty( "thread.await.termination.time");
