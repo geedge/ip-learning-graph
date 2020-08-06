@@ -105,6 +105,7 @@ public class ReadClickhouseData {
             newDoc.setKey(subscriberId);
             newDoc.addAttribute("FIRST_FOUND_TIME", firstFoundTime);
             newDoc.addAttribute("LAST_FOUND_TIME", lastFoundTime);
+            newDoc.addAttribute("SUBSCRIBER_ID",subscriberId);
         } catch (Exception e) {
             e.printStackTrace();
         }
