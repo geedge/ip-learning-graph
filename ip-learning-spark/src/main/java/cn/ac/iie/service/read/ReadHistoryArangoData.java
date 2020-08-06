@@ -8,18 +8,30 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
-import static cn.ac.iie.service.read.ReadClickhouseData.RECENT_COUNT_HOUR;
 
 /**
  * @author wlh
  * 多线程全量读取arangoDb历史数据，封装到map
  */
 public class ReadHistoryArangoData<T extends BaseDocument> extends Thread {
+    public static long currentHour = System.currentTimeMillis() / (60 * 60 * 1000) * 60 * 60;
     private static final Logger LOG = LoggerFactory.getLogger(ReadHistoryArangoData.class);
+    static final Integer RECENT_COUNT_HOUR = ApplicationConfig.RECENT_COUNT_HOUR();
+
+    public static final HashSet<String> PROTOCOL_SET;
+
+    static {
+        PROTOCOL_SET = new HashSet<>();
+        PROTOCOL_SET.add("HTTP");
+        PROTOCOL_SET.add("TLS");
+        PROTOCOL_SET.add("DNS");
+    }
 
     private ArangoDBConnect arangoConnect;
     private String query;
@@ -52,25 +64,35 @@ public class ReadHistoryArangoData<T extends BaseDocument> extends Thread {
                 int i = 0;
                 for (T doc : baseDocuments) {
                     String key = doc.getKey();
-                    int hashCode = Math.abs(key.hashCode()) % ApplicationConfig.THREAD_POOL_NUMBER;
+                    switch (table) {
+                        case "R_LOCATE_FQDN2IP":
+                            updateProtocolDocument(doc);
+                            deleteDistinctClientIpByTime(doc);
+                            break;
+                        case "R_VISIT_IP2FQDN":
+                            updateProtocolDocument(doc);
+                            break;
+                        default:
+                    }
+                    int hashCode = Math.abs(key.hashCode()) % ApplicationConfig.THREAD_POOL_NUMBER();
                     ConcurrentHashMap<String, T> tmpMap = map.get(hashCode);
                     tmpMap.put(key, doc);
                     i++;
                 }
                 long l = System.currentTimeMillis();
-                LOG.info(query + "\n读取" + i + "条数据，运行时间：" + (l - s));
+                LOG.warn(query + "\n读取" + i + "条数据，运行时间：" + (l - s));
             }
         }catch (Exception e){
             e.printStackTrace();
         }finally {
             countDownLatch.countDown();
-            LOG.info("本线程读取完毕，剩余线程数量："+countDownLatch.getCount());
+            LOG.warn("本线程读取完毕，剩余线程数量："+countDownLatch.getCount());
         }
     }
 
     private void updateProtocolDocument(T doc) {
         if (doc.getProperties().containsKey("PROTOCOL_TYPE")) {
-            for (String protocol : ReadClickhouseData.PROTOCOL_SET) {
+            for (String protocol : PROTOCOL_SET) {
                 String protocolRecent = protocol + "_CNT_RECENT";
                 ArrayList<Long> cntRecent = (ArrayList<Long>) doc.getAttribute(protocolRecent);
                 Long[] cntRecentsSrc = cntRecent.toArray(new Long[cntRecent.size()]);
@@ -80,6 +102,24 @@ public class ReadHistoryArangoData<T extends BaseDocument> extends Thread {
                 doc.addAttribute(protocolRecent, cntRecentsDst);
             }
         }
+    }
+
+    private void deleteDistinctClientIpByTime(T doc) {
+        ArrayList<String> distCip = (ArrayList<String>) doc.getAttribute("DIST_CIP");
+        ArrayList<Long> distCipTs = (ArrayList<Long>) doc.getAttribute("DIST_CIP_TS");
+        distCipTs.add(currentHour - RECENT_COUNT_HOUR * 3600);
+        Collections.sort(distCipTs);
+        int index = distCipTs.indexOf(currentHour - RECENT_COUNT_HOUR * 3600);
+        String[] distCipArr = new String[index];
+        long[] disCipTsArr = new long[index];
+        if (distCip.size() + 1 == distCipTs.size()){
+            for (int i = 0; i < index; i++) {
+                distCipArr[i] = distCip.get(i);
+                disCipTsArr[i] = distCipTs.get(i);
+            }
+        }
+        doc.updateAttribute("DIST_CIP", distCipArr);
+        doc.updateAttribute("DIST_CIP_TS", disCipTsArr);
     }
 
 }

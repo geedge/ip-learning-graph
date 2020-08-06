@@ -28,10 +28,10 @@ public class ArangoDBConnect {
 
     private static void getArangoDatabase(){
         arangoDB = new ArangoDB.Builder()
-                .maxConnections(ApplicationConfig.THREAD_POOL_NUMBER)
-                .host(ApplicationConfig.ARANGODB_HOST, ApplicationConfig.ARANGODB_PORT)
-                .user(ApplicationConfig.ARANGODB_USER)
-                .password(ApplicationConfig.ARANGODB_PASSWORD)
+                .maxConnections(ApplicationConfig.THREAD_POOL_NUMBER())
+                .host(ApplicationConfig.ARANGODB_HOST(), ApplicationConfig.ARANGODB_PORT())
+                .user(ApplicationConfig.ARANGODB_USER())
+                .password(ApplicationConfig.ARANGODB_PASSWORD())
                 .build();
     }
 
@@ -43,7 +43,7 @@ public class ArangoDBConnect {
     }
 
     private ArangoDatabase getDatabase(){
-        return arangoDB.db(ApplicationConfig.ARANGODB_DB_NAME);
+        return arangoDB.db(ApplicationConfig.ARANGODB_DB_NAME());
     }
 
     public void clean(){
@@ -59,7 +59,7 @@ public class ArangoDBConnect {
     public <T> ArangoCursor<T> executorQuery(String query,Class<T> type){
         ArangoDatabase database = getDatabase();
         Map<String, Object> bindVars = new MapBuilder().get();
-        AqlQueryOptions options = new AqlQueryOptions().ttl(ApplicationConfig.ARANGODB_TTL);
+        AqlQueryOptions options = new AqlQueryOptions().ttl(ApplicationConfig.ARANGODB_TTL());
         try {
             return database.query(query, bindVars, options, type);
         }catch (Exception e){
@@ -101,7 +101,7 @@ public class ArangoDBConnect {
                 MultiDocumentEntity<DocumentCreateEntity<T>> documentCreateEntityMultiDocumentEntity = collection.insertDocuments(docOverwrite, documentCreateOptions);
                 Collection<ErrorEntity> errors = documentCreateEntityMultiDocumentEntity.getErrors();
                 for (ErrorEntity errorEntity:errors){
-                    LOG.debug("写入arangoDB异常："+errorEntity.getErrorMessage());
+                    LOG.warn("写入arangoDB异常："+errorEntity.getErrorMessage());
                 }
             }
         }catch (Exception e){

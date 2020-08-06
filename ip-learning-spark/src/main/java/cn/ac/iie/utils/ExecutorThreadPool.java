@@ -22,7 +22,7 @@ public class ExecutorThreadPool {
                 .setNameFormat("iplearning-application-pool-%d").build();
 
         //Common Thread Pool
-        pool = new ThreadPoolExecutor(ApplicationConfig.THREAD_POOL_NUMBER, ApplicationConfig.THREAD_POOL_NUMBER*2,
+        pool = new ThreadPoolExecutor(ApplicationConfig.THREAD_POOL_NUMBER(), ApplicationConfig.THREAD_POOL_NUMBER()*2,
                 0L, TimeUnit.MILLISECONDS,
                 new LinkedBlockingQueue<>(1024), namedThreadFactory, new ThreadPoolExecutor.AbortPolicy());
 
@@ -40,28 +40,9 @@ public class ExecutorThreadPool {
         pool.execute(command);
     }
 
-    @Deprecated
-    public void awaitThreadTask(){
-        try {
-            while (!pool.awaitTermination(ApplicationConfig.THREAD_AWAIT_TERMINATION_TIME, TimeUnit.SECONDS)) {
-                System.out.println("线程池没有关闭");
-            }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
     public void shutdown(){
         pool.shutdown();
     }
-
-    @Deprecated
-    public static Long getThreadNumber(){
-        String name = Thread.currentThread().getName();
-        String[] split = name.split("-");
-        return Long.parseLong(split[3]);
-    }
-
 
 
 }

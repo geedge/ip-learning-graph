@@ -1,4 +1,4 @@
-package cn.ac.iie.service.partition
+package cn.ac.iie.spark.partition
 
 import org.apache.spark.Partitioner
 
