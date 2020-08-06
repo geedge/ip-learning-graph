@@ -3,7 +3,11 @@
 ### Example user template
 
 # IntelliJ project files
-.idea
+.idea/
 *.iml
 target
 logs/
+pom.xml
+spark-warehouse/
+src/main/java/cn/ac/iie/config/
+src/test/java/
