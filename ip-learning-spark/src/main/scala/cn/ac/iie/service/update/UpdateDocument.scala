@@ -22,6 +22,10 @@ object UpdateDocument {
   private val LOG = LoggerFactory.getLogger(UpdateDocument.getClass)
   private val baseArangoData = new BaseArangoData()
 
+  def updateDocument(): Unit ={
+
+  }
+
   def updateVertexFqdn(): Unit ={
     baseArangoData.readHistoryData("FQDN",historyVertexFqdnMap,classOf[BaseDocument])
     val hisVerFqdnBc = spark.sparkContext.broadcast(historyVertexFqdnMap)
