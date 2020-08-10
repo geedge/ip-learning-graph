@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 public class ArangoDBConnect {
@@ -71,7 +72,7 @@ public class ArangoDBConnect {
         }
     }
 
-    public <T> void overwrite(ArrayList<T> docOverwrite,String collectionName){
+    public <T> void overwrite(List<T> docOverwrite, String collectionName){
         ArangoDatabase database = getDatabase();
         try {
             ArangoCollection collection = database.collection(collectionName);

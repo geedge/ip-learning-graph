@@ -19,6 +19,7 @@ import static cn.ac.iie.service.ingestion.ReadClickhouseData.*;
  * @author wlh
  * 多线程全量读取arangoDb历史数据，封装到map
  */
+@SuppressWarnings("unchecked")
 public class ReadHistoryArangoData<T extends BaseDocument> extends Thread {
     private static final Logger LOG = LoggerFactory.getLogger(ReadHistoryArangoData.class);
 
@@ -84,7 +85,7 @@ public class ReadHistoryArangoData<T extends BaseDocument> extends Thread {
             for (String protocol : ReadClickhouseData.PROTOCOL_SET) {
                 String protocolRecent = protocol + "_CNT_RECENT";
                 ArrayList<Long> cntRecent = (ArrayList<Long>) doc.getAttribute(protocolRecent);
-                Long[] cntRecentsSrc = cntRecent.toArray(new Long[cntRecent.size()]);
+                Long[] cntRecentsSrc = cntRecent.toArray(new Long[0]);
                 Long[] cntRecentsDst = new Long[RECENT_COUNT_HOUR];
                 System.arraycopy(cntRecentsSrc, 0, cntRecentsDst, 1, cntRecentsSrc.length - 1);
                 cntRecentsDst[0] = 0L;
