@@ -44,20 +44,16 @@ public class UpdateGraphData {
         long start = System.currentTimeMillis();
         try {
 
-            updateDocument(newVertexFqdnMap, historyVertexFqdnMap, "FQDN",
-                    Fqdn.class,BaseDocument.class,
+            updateDocument(newVertexFqdnMap, historyVertexFqdnMap, "FQDN", Fqdn.class,BaseDocument.class,
                     ReadClickhouseData::getVertexFqdnSql,ReadClickhouseData::getVertexFqdnDocument);
 
-            updateDocument(newVertexIpMap,historyVertexIpMap,"IP",
-                    Ip.class,BaseDocument.class,
+            updateDocument(newVertexIpMap,historyVertexIpMap,"IP", Ip.class,BaseDocument.class,
                     ReadClickhouseData::getVertexIpSql,ReadClickhouseData::getVertexIpDocument);
 
-            updateDocument(newVertexSubscriberMap,historyVertexSubscriberMap,"SUBSCRIBER",
-                    Subscriber.class,BaseDocument.class,
+            updateDocument(newVertexSubscriberMap,historyVertexSubscriberMap,"SUBSCRIBER", Subscriber.class,BaseDocument.class,
                     ReadClickhouseData::getVertexSubscriberSql,ReadClickhouseData::getVertexSubscriberDocument);
 
-            updateDocument(newRelationFqdnAddressIpMap,historyRelationFqdnAddressIpMap,"R_LOCATE_FQDN2IP",
-                    LocateFqdn2Ip.class,BaseEdgeDocument.class,
+            updateDocument(newRelationFqdnAddressIpMap,historyRelationFqdnAddressIpMap,"R_LOCATE_FQDN2IP", LocateFqdn2Ip.class,BaseEdgeDocument.class,
                     ReadClickhouseData::getRelationshipFqdnAddressIpSql,ReadClickhouseData::getRelationFqdnAddressIpDocument);
 
 //            updateDocument(newRelationIpVisitFqdnMap,historyRelationIpVisitFqdnMap,"R_VISIT_IP2FQDN",

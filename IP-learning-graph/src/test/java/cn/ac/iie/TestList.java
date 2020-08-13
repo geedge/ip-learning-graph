@@ -11,6 +11,7 @@ import java.util.List;
 
 public class TestList {
     public static void main(String[] args) {
+        /*
         ArangoDBConnect arangoConnect = ArangoDBConnect.getInstance();
         ArangoCursor<BaseEdgeDocument> documents = arangoConnect.executorQuery("FOR doc IN R_LOCATE_FQDN2IP filter doc.FIRST_FOUND_TIME >= 1596080839 and doc.FIRST_FOUND_TIME <= 1596395473  RETURN doc", BaseEdgeDocument.class);
         List<BaseEdgeDocument> baseEdgeDocuments = documents.asListRemaining();
@@ -18,8 +19,8 @@ public class TestList {
             doc.updateAttribute("PROTOCOL_TYPE","123");
         }
 
+*/
 
-        /*
         ArrayList<Integer> integers = new ArrayList<>();
         integers.add(10);
         integers.add(8);
@@ -39,7 +40,9 @@ public class TestList {
         integers.add(5);
         Collections.sort(integers);
         System.out.println(integers);
+        Collections.reverse(integers);
+        System.out.println(integers);
         System.out.println(integers.indexOf(5));
-        */
+
     }
 }

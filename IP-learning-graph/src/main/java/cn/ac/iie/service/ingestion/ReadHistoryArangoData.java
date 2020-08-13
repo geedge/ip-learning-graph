@@ -50,6 +50,7 @@ public class ReadHistoryArangoData<T extends BaseDocument> extends Thread {
             long s = System.currentTimeMillis();
             ArangoCursor<T> docs = arangoConnect.executorQuery(query, type);
             if (docs != null) {
+                ArrayList<T> list = new ArrayList<>();
                 List<T> baseDocuments = docs.asListRemaining();
                 int i = 0;
                 for (T doc : baseDocuments) {
@@ -58,9 +59,7 @@ public class ReadHistoryArangoData<T extends BaseDocument> extends Thread {
                         case "R_LOCATE_FQDN2IP":
                             updateProtocolDocument(doc);
                             deleteDistinctClientIpByTime(doc);
-                            break;
-                        case "R_VISIT_IP2FQDN":
-                            updateProtocolDocument(doc);
+                            list.add(doc);
                             break;
                         default:
                     }
@@ -69,6 +68,7 @@ public class ReadHistoryArangoData<T extends BaseDocument> extends Thread {
                     tmpMap.put(key, doc);
                     i++;
                 }
+                arangoConnect.overwrite(list,table);
                 long l = System.currentTimeMillis();
                 LOG.info(query + "\n读取" + i + "条数据，运行时间：" + (l - s));
             }
@@ -99,10 +99,11 @@ public class ReadHistoryArangoData<T extends BaseDocument> extends Thread {
         ArrayList<Long> distCipTs = (ArrayList<Long>) doc.getAttribute("DIST_CIP_TS");
         distCipTs.add(currentHour - RECENT_COUNT_HOUR * 3600);
         Collections.sort(distCipTs);
+        Collections.reverse(distCipTs);
         int index = distCipTs.indexOf(currentHour - RECENT_COUNT_HOUR * 3600);
         String[] distCipArr = new String[index];
         long[] disCipTsArr = new long[index];
-        if (distCip.size() + 1 == distCipTs.size()){
+        if (index != 0 && distCip.size() + 1 == distCipTs.size()){
             for (int i = 0; i < index; i++) {
                 distCipArr[i] = distCip.get(i);
                 disCipTsArr[i] = distCipTs.get(i);
