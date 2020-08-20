@@ -43,9 +43,11 @@ public class BaseArangoData {
                 historyMap.put(i, new ConcurrentHashMap<>());
             }
             CountDownLatch countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER());
-            long[] timeRange = getTimeRange(table);
+//            long[] timeRange = getTimeRange(table);
+            Long countTotal = getCountTotal(table);
             for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER(); i++) {
-                String sql = getQuerySql(timeRange, i, table);
+//                String sql = getQuerySql(timeRange, i, table);
+                String sql = getQuerySql(countTotal, i, table);
                 ReadHistoryArangoData<T> readHistoryArangoData = new ReadHistoryArangoData<>(arangoDBConnect, sql, historyMap, type, table, countDownLatch);
                 threadPool.executor(readHistoryArangoData);
             }
@@ -55,6 +57,29 @@ public class BaseArangoData {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private Long getCountTotal(String table){
+        long start = System.currentTimeMillis();
+        Long cnt = 0L;
+        String sql = "RETURN LENGTH("+table+")";
+        try {
+            ArangoCursor<Long> longs = arangoDBConnect.executorQuery(sql, Long.class);
+            while (longs.hasNext()){
+                cnt = longs.next();
+            }
+        }catch (Exception e){
+            LOG.error(sql +"执行异常");
+        }
+        long last = System.currentTimeMillis();
+        LOG.info(sql+" 结果："+cnt+" 执行时间："+(last-start));
+        return cnt;
+    }
+
+    private String getQuerySql(Long cnt,int threadNumber, String table){
+        long sepNum = cnt / ApplicationConfig.THREAD_POOL_NUMBER() + 1;
+        long offsetNum = threadNumber * sepNum;
+        return "FOR doc IN " + table + " limit "+offsetNum+","+sepNum+" RETURN doc";
     }
 
     private long[] getTimeRange(String table) {
