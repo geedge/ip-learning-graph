@@ -6,7 +6,8 @@ public class IpLearningApplicationTest {
 
     public static void main(String[] args) {
         UpdateGraphData updateGraphData = new UpdateGraphData();
-        updateGraphData.updateArango();
+//        updateGraphData.updateArango();
+        updateGraphData.updateArango2();
 
     }
 }

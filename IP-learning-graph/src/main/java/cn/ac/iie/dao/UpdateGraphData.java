@@ -75,6 +75,41 @@ public class UpdateGraphData {
         }
     }
 
+    public void updateArango2(){
+        long start = System.currentTimeMillis();
+        try {
+
+            updateDocument("FQDN", Fqdn.class,BaseDocument.class,
+                    ReadClickhouseData::getVertexFqdnSql,ReadClickhouseData::getVertexFqdnDocument);
+
+            updateDocument("IP", Ip.class,BaseDocument.class,
+                    ReadClickhouseData::getVertexIpSql,ReadClickhouseData::getVertexIpDocument);
+
+            updateDocument("SUBSCRIBER", Subscriber.class,BaseDocument.class,
+                    ReadClickhouseData::getVertexSubscriberSql,ReadClickhouseData::getVertexSubscriberDocument);
+
+            updateDocument("R_LOCATE_FQDN2IP", LocateFqdn2Ip.class,BaseEdgeDocument.class,
+                    ReadClickhouseData::getRelationshipFqdnAddressIpSql,ReadClickhouseData::getRelationFqdnAddressIpDocument);
+
+//            updateDocument("R_VISIT_IP2FQDN",
+//                    VisitIp2Fqdn.class,BaseEdgeDocument.class,
+//                    ReadClickhouseData::getRelationshipIpVisitFqdnSql,ReadClickhouseData::getRelationIpVisitFqdnDocument);
+
+            updateDocument("R_LOCATE_SUBSCRIBER2IP",
+                    LocateSubscriber2Ip.class,BaseEdgeDocument.class,
+                    ReadClickhouseData::getRelationshipSubsciberLocateIpSql,ReadClickhouseData::getRelationshipSubsciberLocateIpDocument);
+
+
+            long last = System.currentTimeMillis();
+            LOG.info("iplearning application运行完毕，用时："+(last - start));
+        }catch (Exception e){
+            e.printStackTrace();
+        }finally {
+            arangoManger.clean();
+            pool.shutdown();
+        }
+    }
+
 
     private <T extends BaseDocument> void updateDocument(HashMap<Integer, HashMap<String, ArrayList<T>>> newMap,
                                                          ConcurrentHashMap<Integer, ConcurrentHashMap<String, T>> historyMap,
@@ -115,6 +150,46 @@ public class UpdateGraphData {
             historyMap.clear();
         }
     }
+
+    private <T extends BaseDocument> void updateDocument(String collection,
+                                                         Class<? extends Document<T>> taskType,
+                                                         Class<T> docmentType,
+                                                         Supplier<String> getSqlSupplier,
+                                                         Function<ResultSet,T> formatResultFunc){
+        ConcurrentHashMap<Integer, ConcurrentHashMap<String, T>> historyData = baseArangoData.readHistoryData(collection, docmentType);
+        LOG.info(collection+" 读取clickhouse,封装结果集");
+        HashMap<Integer, HashMap<String, ArrayList<T>>> newData = baseClickhouseData.baseDocFromCk(getSqlSupplier, formatResultFunc);
+        try {
+            LOG.info(collection+" 开始更新");
+            long start = System.currentTimeMillis();
+            CountDownLatch countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER);
+            for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++){
+                HashMap<String, ArrayList<T>> tmpNewMap = newData.get(i);
+                ConcurrentHashMap<String, T> tmpHisMap = historyData.get(i);
+                Constructor constructor = taskType.getConstructor(
+                        HashMap.class,
+                        ArangoDBConnect.class,
+                        String.class,
+                        ConcurrentHashMap.class,
+                        CountDownLatch.class);
+                Document docTask = (Document)constructor.newInstance(tmpNewMap, arangoManger, collection, tmpHisMap, countDownLatch);
+                pool.executor(docTask);
+            }
+            countDownLatch.await();
+            long last = System.currentTimeMillis();
+            LOG.info(collection+" 更新完毕,共耗时："+(last-start));
+
+        }catch (Exception e){
+            e.printStackTrace();
+            LOG.error("更新"+collection+"失败！！"+e.toString());
+        }finally {
+            newData.clear();
+            historyData.clear();
+        }
+
+
+    }
+
 
 
 }

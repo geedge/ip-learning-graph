@@ -58,6 +58,32 @@ public class BaseArangoData {
         }
     }
 
+    public <T extends BaseDocument> ConcurrentHashMap<Integer,ConcurrentHashMap<String, T>> readHistoryData(String table, Class<T> type){
+        ConcurrentHashMap<Integer,ConcurrentHashMap<String, T>> map = new ConcurrentHashMap<>();
+        try {
+            LOG.info("开始更新"+table);
+            long start = System.currentTimeMillis();
+            for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++){
+                map.put(i,new ConcurrentHashMap<>());
+            }
+            CountDownLatch countDownLatch = new CountDownLatch(ApplicationConfig.THREAD_POOL_NUMBER);
+            Long countTotal = getCountTotal(table);
+            for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
+                String sql = getQuerySql(countTotal, i, table);
+                ReadHistoryArangoData<T> readHistoryArangoData =
+                        new ReadHistoryArangoData<>(arangoDBConnect, sql, map,type,table,countDownLatch);
+                threadPool.executor(readHistoryArangoData);
+            }
+            countDownLatch.await();
+            long last = System.currentTimeMillis();
+            LOG.info("读取"+table+" arangoDB 共耗时："+(last-start));
+        }catch (Exception e){
+            e.printStackTrace();
+            LOG.error("读取历史数据失败 "+e.toString());
+        }
+        return map;
+    }
+
     private long[] getTimeRange(String table){
         long minTime = 0L;
         long maxTime = 0L;

@@ -73,5 +73,51 @@ public class BaseClickhouseData {
         }
     }
 
+    public <T extends BaseDocument> HashMap<Integer, HashMap<String,ArrayList<T>>> baseDocFromCk(Supplier<String> getSqlSupplier,
+                                                             Function<ResultSet,T> formatResultFunc){
+        long start = System.currentTimeMillis();
+        HashMap<Integer, HashMap<String, ArrayList<T>>> newDataMap = initializeMap();
+        if (newDataMap == null){
+            return null;
+        }
+        String sql = getSqlSupplier.get();
+        try {
+            connection = manger.getConnection();
+            statement = connection.createStatement();
+            ResultSet resultSet = statement.executeQuery(sql);
+            int i = 0;
+            while (resultSet.next()) {
+                T newDoc = formatResultFunc.apply(resultSet);
+                if (newDoc != null) {
+                    i+=1;
+                    putMapByHashcode(newDoc, newDataMap);
+                }
+            }
+            long last = System.currentTimeMillis();
+            LOG.info(sql + "\n读取"+i+"条数据，运行时间：" + (last - start));
+        }catch (Exception e){
+            e.printStackTrace();
+            LOG.error("获取原始数据失败 "+e.toString());
+        }finally {
+            manger.clear(statement,connection);
+        }
+        return newDataMap;
+    }
+
+    private <T extends BaseDocument> HashMap<Integer, HashMap<String,ArrayList<T>>> initializeMap(){
+        try {
+            HashMap<Integer, HashMap<String, ArrayList<T>>> newDataMap = new HashMap<>();
+            for (int i = 0; i < ApplicationConfig.THREAD_POOL_NUMBER; i++) {
+                newDataMap.put(i, new HashMap<>());
+            }
+            return newDataMap;
+        }catch (Exception e){
+            e.printStackTrace();
+            LOG.error("数据初始化失败 "+e.toString());
+            return null;
+        }
+
+    }
+
 
 }
