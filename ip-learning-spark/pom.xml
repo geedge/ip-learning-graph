@@ -64,6 +64,18 @@
     </dependency>
 
     <dependency>
+        <groupId>com.arangodb</groupId>
+        <artifactId>velocypack-module-jdk8</artifactId>
+        <version>1.1.0</version>
+    </dependency>
+
+    <dependency>
+        <groupId>com.arangodb</groupId>
+        <artifactId>velocypack-module-scala_2.11</artifactId>
+        <version>1.2.0</version>
+    </dependency>
+
+    <dependency>
         <groupId>org.scala-lang</groupId>
         <artifactId>scala-library</artifactId>
         <version>2.11.8</version>
@@ -75,6 +87,11 @@
         <version>3.2.0</version>
     </dependency>
 
+    <dependency>
+        <groupId>org.scala-lang.modules</groupId>
+        <artifactId>scala-xml_2.11</artifactId>
+        <version>1.0.4</version>
+    </dependency>
 
     <dependency>
         <groupId>org.scala-tools</groupId>
