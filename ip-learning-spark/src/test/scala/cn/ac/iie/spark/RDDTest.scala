@@ -27,6 +27,9 @@ object RDDTest {
       doc.addAttribute("abc", 1)
       doc
     })
+
+    value.map(doc => {(doc.getKey,doc)})
+
     value.persist(StorageLevel.MEMORY_AND_DISK)
 
     value.foreach(row => println(row.toString))
