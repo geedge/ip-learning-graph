@@ -1,7 +1,8 @@
 package cn.ac.iie.service.update
 
 
-import java.lang
+import java.util
+import scala.collection.JavaConversions._
 
 import cn.ac.iie.config.ApplicationConfig
 import cn.ac.iie.service.read.ReadHistoryArangoData
@@ -14,16 +15,24 @@ object UpdateDocHandler {
   val PROTOCOL_SET: Set[String] = Set("HTTP","TLS","DNS")
 
   def updateMaxAttribute(hisDoc: BaseDocument,newAttribute:Long,attributeName:String): Unit ={
-    var hisAttritube = hisDoc.getAttribute(attributeName).toString.toLong
-    if (newAttribute > hisAttritube){
-      hisAttritube = newAttribute
+    if(hisDoc.getProperties.containsKey(attributeName)){
+      var hisAttritube = hisDoc.getAttribute(attributeName).toString.toLong
+      if (newAttribute > hisAttritube){
+        hisAttritube = newAttribute
+      }
+      hisDoc.addAttribute(attributeName,hisAttritube)
     }
-    hisDoc.addAttribute(attributeName,hisAttritube)
   }
 
   def updateSumAttribute(hisDoc: BaseDocument,newAttribute:Long,attributeName:String): Unit ={
-    val hisAttritube = hisDoc.getAttribute(attributeName).toString.toLong
-    hisDoc.addAttribute(attributeName,newAttribute+hisAttritube)
+    if (hisDoc.getProperties.containsKey(attributeName)){
+      val hisAttritube = hisDoc.getAttribute(attributeName).toString.toLong
+      hisDoc.addAttribute(attributeName,newAttribute+hisAttritube)
+    }
+  }
+
+  def replaceAttribute(hisDoc: BaseDocument,newAttribute:String,attributeName:String): Unit ={
+    hisDoc.addAttribute(attributeName,newAttribute)
   }
 
   def separateAttributeByIpType(ipTypeList:ofRef[String],
@@ -62,19 +71,21 @@ object UpdateDocHandler {
   }
 
   def updateProtocolAttritube(hisDoc:BaseEdgeDocument, protocolMap: Map[String, Long]): Unit ={
-    var protocolType = hisDoc.getAttribute("PROTOCOL_TYPE").toString
-    protocolMap.foreach(t => {
-      if (t._2 > 0 && !protocolType.contains(t._1)){
-        protocolType = protocolType.concat(","+ t._1)
-      }
-      val cntTotalName = t._1.concat("_CNT_TOTAL")
-      val cntRecentName = t._1.concat("_CNT_RECENT")
-      val cntRecent: Array[lang.Long] = hisDoc.getAttribute(cntRecentName).asInstanceOf[Array[java.lang.Long]]
-      cntRecent.update(0,t._2)
-      updateSumAttribute(hisDoc,t._2,cntTotalName)
-      hisDoc.addAttribute(cntRecentName,cntRecent)
-    })
-    hisDoc.addAttribute("PROTOCOL_TYPE",protocolType)
+    if (hisDoc.getProperties.containsKey("PROTOCOL_TYPE")){
+      var protocolType = hisDoc.getAttribute("PROTOCOL_TYPE").toString
+      protocolMap.foreach((t: (String, Long)) => {
+        if (t._2 > 0 && !protocolType.contains(t._1)){
+          protocolType = protocolType.concat(","+ t._1)
+        }
+        val cntTotalName = t._1.concat("_CNT_TOTAL")
+        val cntRecentName = t._1.concat("_CNT_RECENT")
+        val cntRecent = hisDoc.getAttribute(cntRecentName).asInstanceOf[Array[Long]]
+        cntRecent.update(0,t._2)
+        updateSumAttribute(hisDoc,t._2,cntTotalName)
+        hisDoc.addAttribute(cntRecentName,cntRecent)
+      })
+      hisDoc.addAttribute("PROTOCOL_TYPE",protocolType)
+    }
   }
 
   def putProtocolAttritube(doc:BaseEdgeDocument, protocolMap: Map[String, Long]): Unit ={
@@ -93,9 +104,29 @@ object UpdateDocHandler {
     doc.addAttribute("PROTOCOL_TYPE",protocolTypeBuilder.toString().replaceFirst(",",""))
   }
 
-  def mergeDistinctIp(distCipRecent:ofRef[ofRef[String]]): Array[String] ={
-     distCipRecent.flatten.distinct.take(ApplicationConfig.DISTINCT_CLIENT_IP_NUM).toArray
+  def updateProtocolDocument(doc: BaseEdgeDocument): Unit = {
+    if (doc.getProperties.containsKey("PROTOCOL_TYPE")) {
+      for (protocol <- PROTOCOL_SET) {
+        val protocolRecent = protocol + "_CNT_RECENT"
+        val cntRecent: util.ArrayList[Long] = doc.getAttribute(protocolRecent).asInstanceOf[util.ArrayList[Long]]
+        val cntRecentsSrc = cntRecent.toArray().map(_.toString.toLong)
+        val cntRecentsDst = new Array[Long](24)
+        System.arraycopy(cntRecentsSrc, 0, cntRecentsDst, 1, cntRecentsSrc.length - 1)
+        cntRecentsDst(0) = 0L
+        doc.addAttribute(protocolRecent, cntRecentsDst)
+      }
+    }
   }
+
+  def mergeDistinctIp(distCipRecent:ofRef[String]): Array[String] ={
+    distCipRecent.flatMap(str => {
+      str.replaceAll("\\[","")
+        .replaceAll("\\]","")
+        .replaceAll("\\'","")
+        .split(",")
+    }).distinct.take(ApplicationConfig.DISTINCT_CLIENT_IP_NUM).toArray
+  }
+
 
   def putDistinctIp(doc:BaseEdgeDocument,newDistinctIp:Array[String]): Unit ={
     val map = newDistinctIp.map(ip => {
@@ -106,17 +137,19 @@ object UpdateDocHandler {
   }
 
   def updateDistinctIp(hisDoc:BaseEdgeDocument,newDistinctIp:Array[String]): Unit ={
-    val hisDistCip = hisDoc.getAttribute("DIST_CIP").asInstanceOf[Array[String]]
-    val hisDistCipTs = hisDoc.getAttribute("DIST_CIP_TS").asInstanceOf[Array[Long]]
-    if (hisDistCip.length == hisDistCipTs.length){
-      val distCipToTsMap: Map[String, Long] = hisDistCip.zip(hisDistCipTs).toMap
-      val muDistCipToTsMap: mutable.Map[String, Long] = mutable.Map(distCipToTsMap.toSeq:_*)
-      newDistinctIp.foreach(cip => {
-        muDistCipToTsMap.put(cip,ReadHistoryArangoData.currentHour)
-      })
-      val resultMap = muDistCipToTsMap.toList.sortBy(-_._2).take(ApplicationConfig.DISTINCT_CLIENT_IP_NUM).toMap
-      hisDoc.addAttribute("DIST_CIP",resultMap.keys.toArray)
-      hisDoc.addAttribute("DIST_CIP_TS",resultMap.values.toArray)
+    if (hisDoc.getProperties.containsKey("DIST_CIP") && hisDoc.getProperties.containsKey("DIST_CIP_TS")){
+      val hisDistCip = hisDoc.getAttribute("DIST_CIP").asInstanceOf[util.ArrayList[String]]
+      val hisDistCipTs = hisDoc.getAttribute("DIST_CIP_TS").asInstanceOf[util.ArrayList[Long]]
+      if (hisDistCip.length == hisDistCipTs.length){
+        val distCipToTsMap: Map[String, Long] = hisDistCip.zip(hisDistCipTs).toMap
+        val muDistCipToTsMap: mutable.Map[String, Long] = mutable.Map(distCipToTsMap.toSeq:_*)
+        newDistinctIp.foreach(cip => {
+          muDistCipToTsMap.put(cip,ReadHistoryArangoData.currentHour)
+        })
+        val resultMap = muDistCipToTsMap.toList.sortBy(-_._2).take(ApplicationConfig.DISTINCT_CLIENT_IP_NUM).toMap
+        hisDoc.addAttribute("DIST_CIP",resultMap.keys.toArray)
+        hisDoc.addAttribute("DIST_CIP_TS",resultMap.values.toArray)
+      }
     }
   }
 

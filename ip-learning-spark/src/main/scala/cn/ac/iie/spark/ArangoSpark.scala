@@ -24,6 +24,7 @@ package cn.ac.iie.spark
 
 import cn.ac.iie.spark.rdd.{ArangoRdd, ReadOptions, WriteOptions}
 import cn.ac.iie.spark.vpack.VPackUtils
+import com.arangodb.model.DocumentCreateOptions
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
@@ -76,7 +77,6 @@ object ArangoSpark {
    *
    * @param dataframe the dataframe with data to save
    * @param collection the collection to save in
-   * @param options additional write options
    */
   def saveDF(dataframe: DataFrame, collection: String): Unit =
     saveRDD[Row](dataframe.rdd, collection, WriteOptions(), (x: Iterator[Row]) => x.map { y => VPackUtils.rowToVPack(y) })
@@ -102,6 +102,11 @@ object ArangoSpark {
           case WriteOptions.INSERT  => col.insertDocuments(docs)
           case WriteOptions.UPDATE  => col.updateDocuments(docs)
           case WriteOptions.REPLACE => col.replaceDocuments(docs)
+          case WriteOptions.OVERWRITE =>
+            val documentCreateOptions = new DocumentCreateOptions
+            documentCreateOptions.overwrite(true)
+            documentCreateOptions.silent(true)
+            col.insertDocuments(docs, documentCreateOptions)
         }
 
         arangoDB.shutdown()
@@ -123,7 +128,7 @@ object ArangoSpark {
    *
    * @param sparkContext the sparkContext containing the ArangoDB configuration
    * @param collection the collection to load data from
-   * @param additional read options
+   * @param options read options
    */
   def load[T: ClassTag](sparkContext: SparkContext, collection: String, options: ReadOptions): ArangoRdd[T] =
     new ArangoRdd[T](sparkContext, createReadOptions(options, sparkContext.getConf).copy(collection = collection))

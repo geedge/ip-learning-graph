@@ -56,7 +56,7 @@ class ArangoRdd[T: ClassTag](@transient override val sparkContext: SparkContext,
   override def repartition(numPartitions: Int)(implicit ord: Ordering[T]): RDD[T] = super.repartition(numPartitions)
 
   private def getPartition(idx: Int, countTotal: Long): QueryArangoPartition = {
-    val sepNum = countTotal / ApplicationConfig.THREAD_POOL_NUMBER + 1
+    val sepNum = countTotal / ApplicationConfig.SPARK_SQL_SHUFFLE_PARTITIONS + 1
     val offsetNum = idx * sepNum
     new QueryArangoPartition(idx, offsetNum, sepNum)
   }

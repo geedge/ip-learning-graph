@@ -116,4 +116,9 @@ object WriteOptions {
     */
   case object REPLACE extends Method
 
+  /**
+    * save documents by overwrite
+    */
+  case object OVERWRITE extends Method
+
 }

@@ -7,7 +7,7 @@ import org.apache.spark.sql.SparkSession
 object BaseClickhouseDataTest {
   private val spark: SparkSession = SparkSessionUtil.spark
   def main(args: Array[String]): Unit = {
-    BaseClickhouseData loadConnectionDataFromCk()
+//    BaseClickhouseData loadConnectionDataFromCk()
     val sql =
       """
         |SELECT

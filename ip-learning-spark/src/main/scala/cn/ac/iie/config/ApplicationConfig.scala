@@ -36,12 +36,7 @@ object ApplicationConfig {
   val READ_CLICKHOUSE_MAX_TIME: Long = config.getLong("read.clickhouse.max.time")
   val READ_CLICKHOUSE_MIN_TIME: Long = config.getLong("read.clickhouse.min.time")
 
-  val ARANGO_TIME_LIMIT_TYPE: Int = config.getInt("arango.time.limit.type")
-
-  val READ_ARANGO_MAX_TIME: Long = config.getLong("read.arango.max.time")
-  val READ_ARANGO_MIN_TIME: Long = config.getLong("read.arango.min.time")
-
-  val ARANGODB_READ_LIMIT: String = config.getString("arangoDB.read.limit")
+  val ARANGODB_READ_LIMIT: Int = config.getInt("arangoDB.read.limit")
   val UPDATE_ARANGO_BATCH: Int = config.getInt("update.arango.batch")
   val RECENT_COUNT_HOUR: Int = config.getInt("recent.count.hour")
   val DISTINCT_CLIENT_IP_NUM: Int = config.getInt("distinct.client.ip.num")
